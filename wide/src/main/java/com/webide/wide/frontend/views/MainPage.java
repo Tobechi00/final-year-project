@@ -6,9 +6,11 @@ import com.vaadin.flow.component.Unit;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.contextmenu.MenuItem;
 import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
+import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -16,6 +18,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.webide.wide.dao.ProgramInputDao;
 import com.webide.wide.dao.ProgramOutputDto;
+import com.webide.wide.frontend.custom_components.CustomNotification;
 import com.webide.wide.frontend.custom_components.SelectorLists;
 import com.webide.wide.frontend.custom_components.OutputDialog;
 import com.webide.wide.frontend.custom_components.TextNote;
@@ -44,12 +47,13 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
     ServerRequestMethods serverRequestMethods;
     ProgramOutputDto programOutputDto;
 
-    HorizontalLayout horizontalLayout;
+    HorizontalLayout horizontalLayout,aceEditorLayout;
+
+    VerticalLayout ioLayout,parentLayout;
 
     SelectorLists selectorLists;
     OutputDialog outputDialog;
-
-
+    TextArea inputArea,outputArea;
 
 
     ComponentEventListener<ClickEvent<MenuItem>> listener;
@@ -75,17 +79,33 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
         programOutputDto = new ProgramOutputDto();
         serverRequestMethods = new ServerRequestMethods();
 
+        inputArea = new TextArea();
+        outputArea = new TextArea();
+
         horizontalLayout = new HorizontalLayout();
+        parentLayout = new VerticalLayout();
+        ioLayout = new VerticalLayout();
+        aceEditorLayout = new HorizontalLayout();
+
         selectorLists = new SelectorLists();
 
-        HorizontalLayout aceEditorLayout = new HorizontalLayout();
-        aceEditorLayout.setAlignSelf(Alignment.CENTER);
+        inputArea.setLabel("(optional) Input");
+        outputArea.setLabel("Output");
+
+        inputArea.setSizeFull();
+        outputArea.setSizeFull();
+
+        inputArea.setMaxHeight("150px");
+        outputArea.setMaxHeight("150px");
+
+        outputArea.setEnabled(false);
+
         aceEditorLayout.setJustifyContentMode(JustifyContentMode.CENTER);
         aceEditorLayout.setAlignItems(Alignment.CENTER);
         aceEditorLayout.setSizeFull();
 
-        aceEditor.setTheme(AceTheme.katzenmilch);
-        aceEditor.setFontSize(20);
+        aceEditor.setTheme(AceTheme.dreamweaver);
+//        aceEditor.setFontSize(20);
         aceEditor.setAutoComplete(true);
         aceEditor.setLiveAutocompletion(true);
 
@@ -113,11 +133,16 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
 
         runButton.setText("run code");
         runButton.addClickListener(event -> {
-           programOutputDto = serverRequestMethods.sendPostRequest(new ProgramInputDao("python",aceEditor.getValue()));
 
-           outputDialog.setExitCodeField(programOutputDto.getExitCode());
-           outputDialog.setOutputAreaValue(programOutputDto.getProgramOutput());
-           outputDialog.open();
+            try {
+                programOutputDto = serverRequestMethods.sendPostRequest(new ProgramInputDao("python",aceEditor.getValue()));
+
+                outputDialog.setExitCodeField(programOutputDto.getExitCode());
+                outputDialog.setOutputAreaValue(programOutputDto.getProgramOutput());
+                outputDialog.open();
+            }catch (Exception e){
+                new CustomNotification("Error: Connection to the server could not be established", NotificationVariant.LUMO_ERROR).open();
+            }
         });
 
 
@@ -131,12 +156,19 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
 
         horizontalLayout.add(fontSizeSelector,aceModeSelector,runButton,noteButton);
         horizontalLayout.setSizeFull();
-        horizontalLayout.setJustifyContentMode(JustifyContentMode.END);
-        horizontalLayout.setPadding(true);
+        horizontalLayout.setJustifyContentMode(JustifyContentMode.CENTER);
+//        horizontalLayout.setPadding(true);
 
+        ioLayout.add(inputArea,outputArea);
 
+        parentLayout.add(horizontalLayout,aceEditorLayout,ioLayout);
+        parentLayout.setAlignItems(Alignment.CENTER);
+        parentLayout.setJustifyContentMode(JustifyContentMode.CENTER);
+        parentLayout.setMaxWidth("900px");
+        parentLayout.setPadding(true);
+        parentLayout.setSizeFull();
 
-        add(horizontalLayout,aceEditorLayout);
+        add(parentLayout);
     }
 
     @Override

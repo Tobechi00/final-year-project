@@ -22,6 +22,7 @@ public class SelectorLists {
         aceModeSelect.setItems(list);
         aceModeSelect.setValue(list.get(0));
 
+
         return aceModeSelect;
     }
 
@@ -30,7 +31,9 @@ public class SelectorLists {
         List<Integer> list = new ArrayList<>();
 
         list.add(10);
+        list.add(15);
         list.add(20);
+        list.add(25);
         list.add(30);
         list.add(40);
         list.add(50);

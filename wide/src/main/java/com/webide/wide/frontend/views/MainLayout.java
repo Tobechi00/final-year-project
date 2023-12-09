@@ -20,7 +20,6 @@ import java.io.File;
 public class MainLayout extends AppLayout implements AppShellConfigurator {
 
     SideNavItem saveProjects,createProject,savedProjects,loadProjects,settings;
-
     DrawerToggle drawerToggle;
 
     H2 applicationHeader;
@@ -40,7 +39,7 @@ public class MainLayout extends AppLayout implements AppShellConfigurator {
 
         drawerToggle = new DrawerToggle();
 
-        applicationHeader = new H2("W -ide");
+//        applicationHeader = new H2("W -ide");
 
 
 
@@ -53,7 +52,7 @@ public class MainLayout extends AppLayout implements AppShellConfigurator {
 
         //contains the drawer toggle and the application name
         brandTitleLayout = new HorizontalLayout();
-        brandTitleLayout.add(drawerToggle,applicationHeader);
+        brandTitleLayout.add(drawerToggle);
         brandTitleLayout.setSizeFull();
         brandTitleLayout.setAlignItems(FlexComponent.Alignment.START);
 
@@ -65,7 +64,5 @@ public class MainLayout extends AppLayout implements AppShellConfigurator {
 
         addToDrawer(saveProjects,createProject,savedProjects,loadProjects);
         addToNavbar(parentLayout);
-
-
     }
 }
