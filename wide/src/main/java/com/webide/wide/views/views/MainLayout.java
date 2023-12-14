@@ -1,12 +1,11 @@
-package com.webide.wide.frontend.views;
+package com.webide.wide.views.views;
 
-import com.vaadin.flow.component.Text;
+import com.vaadin.flow.component.accordion.Accordion;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
-import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.page.AppShellConfigurator;
@@ -14,12 +13,10 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.theme.Theme;
 import com.vaadin.flow.theme.lumo.Lumo;
 
-import java.io.File;
-
-@Theme(themeClass = Lumo.class, variant = Lumo.LIGHT)
+@Theme(themeClass = Lumo.class, variant = Lumo.DARK)
 public class MainLayout extends AppLayout implements AppShellConfigurator {
 
-    SideNavItem saveProjects,createProject,savedProjects,loadProjects,settings;
+    SideNavItem saveFile,saveProjects,createProject,savedProjects,loadProjects;
     DrawerToggle drawerToggle;
 
     H2 applicationHeader;
@@ -30,16 +27,15 @@ public class MainLayout extends AppLayout implements AppShellConfigurator {
 
 
     public MainLayout(){
-        savedProjects = new SideNavItem("save file");
-        createProject = new SideNavItem("new project");
-        savedProjects = new SideNavItem("saved projects");
-        loadProjects = new SideNavItem("load projects");
-        settings = new SideNavItem("settings");
+        saveFile = new SideNavItem("download file");
+        createProject = new SideNavItem("New project");
+        savedProjects = new SideNavItem("Saved projects");
+        loadProjects = new SideNavItem("Load projects");
         fileName = new Paragraph("untitled document");
 
         drawerToggle = new DrawerToggle();
 
-//        applicationHeader = new H2("W -ide");
+
 
 
 

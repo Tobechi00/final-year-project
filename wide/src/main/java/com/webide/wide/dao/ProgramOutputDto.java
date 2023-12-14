@@ -4,7 +4,7 @@ public class ProgramOutputDto {
 
     private String programOutput;
 
-    private String exitCode;
+    private int exitCode;
 
     public String getProgramOutput() {
         return programOutput;
@@ -14,11 +14,11 @@ public class ProgramOutputDto {
         this.programOutput = programOutput;
     }
 
-    public String getExitCode() {
+    public int getExitCode() {
         return exitCode;
     }
 
-    public void setExitCode(String exitCode) {
+    public void setExitCode(int exitCode) {
         this.exitCode = exitCode;
     }
 }

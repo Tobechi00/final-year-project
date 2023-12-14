@@ -1,37 +1,33 @@
-package com.webide.wide.frontend.views;
+package com.webide.wide.views.views;
 
 import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.ComponentEventListener;
-import com.vaadin.flow.component.Unit;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.contextmenu.MenuItem;
-import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextArea;
-import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.router.BeforeEnterEvent;
-import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 import com.webide.wide.dao.ProgramInputDao;
 import com.webide.wide.dao.ProgramOutputDto;
-import com.webide.wide.frontend.custom_components.CustomNotification;
-import com.webide.wide.frontend.custom_components.SelectorLists;
-import com.webide.wide.frontend.custom_components.OutputDialog;
-import com.webide.wide.frontend.custom_components.TextNote;
+import com.webide.wide.views.custom_components.CustomNotification;
+import com.webide.wide.views.custom_components.OutputDialog;
+import com.webide.wide.views.custom_components.SelectorLists;
+import com.webide.wide.views.custom_components.TextNote;
 import com.webide.wide.server.ServerRequestMethods;
 import de.f0rce.ace.AceEditor;
 import de.f0rce.ace.enums.AceMode;
 import de.f0rce.ace.enums.AceTheme;
 
-
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+//TODO: ADD FILE DOWNLOAD TO DOWNLOAD CURRENT CODE
 @Route(value = "", layout = MainLayout.class)
+@PreserveOnRefresh
 @PageTitle("mainpage")
 public class MainPage extends VerticalLayout implements BeforeEnterObserver {
     AceEditor aceEditor;
@@ -55,6 +51,7 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
     OutputDialog outputDialog;
     TextArea inputArea,outputArea;
 
+    //disconnect button to convert to floating window
 
     ComponentEventListener<ClickEvent<MenuItem>> listener;
 
@@ -62,6 +59,7 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
 
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
+        setSizeFull();
 
         aceEditor = new AceEditor();
 
@@ -92,20 +90,23 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
         inputArea.setLabel("(optional) Input");
         outputArea.setLabel("Output");
 
+        outputArea.getLabel();
+
         inputArea.setSizeFull();
         outputArea.setSizeFull();
 
         inputArea.setMaxHeight("150px");
         outputArea.setMaxHeight("150px");
 
-        outputArea.setEnabled(false);
+        outputArea.setReadOnly(true);
+
+        outputArea.setMaxHeight(outputArea.getHeight());
 
         aceEditorLayout.setJustifyContentMode(JustifyContentMode.CENTER);
         aceEditorLayout.setAlignItems(Alignment.CENTER);
         aceEditorLayout.setSizeFull();
 
-        aceEditor.setTheme(AceTheme.dreamweaver);
-//        aceEditor.setFontSize(20);
+        aceEditor.setTheme(AceTheme.cloud9_night);
         aceEditor.setAutoComplete(true);
         aceEditor.setLiveAutocompletion(true);
 
@@ -130,16 +131,39 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
             aceEditor.setFontSize(event.getValue());
         });
 
-
         runButton.setText("run code");
         runButton.addClickListener(event -> {
 
             try {
-                programOutputDto = serverRequestMethods.sendPostRequest(new ProgramInputDao("python",aceEditor.getValue()));
 
-                outputDialog.setExitCodeField(programOutputDto.getExitCode());
-                outputDialog.setOutputAreaValue(programOutputDto.getProgramOutput());
-                outputDialog.open();
+                if (inputArea.getValue().isEmpty()) {
+                    programOutputDto = serverRequestMethods.sendPostRequest(new ProgramInputDao("python", aceEditor.getValue()));
+                }else {
+
+                    //incase of user input append input to run after code is executed
+                    programOutputDto = serverRequestMethods.sendPostRequest(new ProgramInputDao("python",aceEditor.getValue(),inputArea.getValue()));
+                }
+
+
+                String output = programOutputDto.getProgramOutput()+"\n"+"Exit Code: "+programOutputDto.getExitCode();
+
+                if (programOutputDto.getExitCode() == 0){
+                    outputArea.getStyle().remove("color");
+                    outputArea.setReadOnly(false);
+                    outputArea.setValue(output);
+                    new CustomNotification("Program has been executed successfully",NotificationVariant.LUMO_SUCCESS).open();
+                }else if(programOutputDto.getExitCode() >= 0 && programOutputDto.getExitCode() != 555){
+                    outputArea.setValue(output);
+                    outputArea.setReadOnly(false);
+                    outputArea.getStyle().setColor("red");
+                    new CustomNotification("Program has been executed with an error",NotificationVariant.LUMO_ERROR).open();
+                }else {
+                    outputArea.setValue(output);
+                    outputArea.setReadOnly(false);
+                    outputArea.getStyle().setColor("yellow");
+                    new CustomNotification("Program took too long to execute",NotificationVariant.LUMO_WARNING).open();
+                }
+
             }catch (Exception e){
                 new CustomNotification("Error: Connection to the server could not be established", NotificationVariant.LUMO_ERROR).open();
             }
@@ -162,7 +186,7 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
         ioLayout.add(inputArea,outputArea);
 
         parentLayout.add(horizontalLayout,aceEditorLayout,ioLayout);
-        parentLayout.setAlignItems(Alignment.CENTER);
+        parentLayout.setAlignItems(Alignment.START);
         parentLayout.setJustifyContentMode(JustifyContentMode.CENTER);
         parentLayout.setMaxWidth("900px");
         parentLayout.setPadding(true);
