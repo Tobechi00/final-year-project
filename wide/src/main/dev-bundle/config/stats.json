@@ -135,6 +135,7 @@
   "@vaadin/vaadin-usage-statistics": "2.1.2",
   "@vaadin/vertical-layout": "24.2.2",
   "@vaadin/virtual-list": "24.2.2",
+  "@webcomponents/shadycss": "1.11.2",
   "construct-style-sheets-polyfill": "3.1.0",
   "date-fns": "2.29.3",
   "lit-element": "3.3.3",
@@ -217,6 +218,7 @@
   "Frontend/generated/jar-resources/contextMenuTargetConnector.js",
   "Frontend/generated/jar-resources/datepickerConnector.js",
   "Frontend/generated/jar-resources/dndConnector.js",
+  "Frontend/generated/jar-resources/file-download-wrapper.js",
   "Frontend/generated/jar-resources/flow-component-renderer.js",
   "Frontend/generated/jar-resources/gridConnector.js",
   "Frontend/generated/jar-resources/lit-renderer.ts",
@@ -237,6 +239,7 @@
   "contextMenuTargetConnector.js": "870f67643988dd5618c247bd3c28d843f70aa026ee89f44c3c7556b5e70856af",
   "datepickerConnector.js": "84d25236e1e478c2e181a7881464ad75228a30ccd99d60f78186f0804b6a4a37",
   "dndConnector.js": "9805235aec2ff3302fcd6e65151fcab1c2fb6944d57281b48d4f5e3b3d06ff4e",
+  "file-download-wrapper.js": "fcecf1df113b66ad87767587f0049d1b16c42ca9216e5d7cb7efce58b96b058b",
   "flow-component-renderer.js": "8c4223d29133b1a052b8f9e90e2c57eadbdd626dbbfd7f4551cf2d1ca6f7469a",
   "gridConnector.js": "8c50e6b738bd6028c37253090efade68bfcdef7e96e023ea7c912e31d7979e6f",
   "lit-renderer.ts": "afefa9f5fcb38260a0ff08bc044a5f591f242689ca3c7905130ad32df0476e7c",
@@ -251,12 +254,12 @@
  },
  "themeJsonContents": {},
  "entryScripts": [
-  "VAADIN/build/indexhtml-1270f1c1.js"
+  "VAADIN/build/indexhtml-9839f960.js"
  ],
  "webComponents": [],
  "cvdlModules": {},
  "packageJsonHash": "4a8f10dad5d68d410f31b78863e3a109ce5a2074fa7acc90db5c0f7672069b31",
  "indexHtmlGenerated": [
-  "  <script type=\"module\" crossorigin src=\"./VAADIN/build/indexhtml-1270f1c1.js\"></script>"
+  "  <script type=\"module\" crossorigin src=\"./VAADIN/build/indexhtml-9839f960.js\"></script>"
  ]
 }

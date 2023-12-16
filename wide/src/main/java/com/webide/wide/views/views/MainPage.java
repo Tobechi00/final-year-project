@@ -10,18 +10,20 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.router.*;
+import com.vaadin.flow.server.StreamResource;
 import com.webide.wide.dao.ProgramInputDao;
 import com.webide.wide.dao.ProgramOutputDto;
-import com.webide.wide.views.custom_components.CustomNotification;
-import com.webide.wide.views.custom_components.OutputDialog;
-import com.webide.wide.views.custom_components.SelectorLists;
-import com.webide.wide.views.custom_components.TextNote;
+import com.webide.wide.views.custom_components.*;
 import com.webide.wide.server.ServerRequestMethods;
 import de.f0rce.ace.AceEditor;
 import de.f0rce.ace.enums.AceMode;
 import de.f0rce.ace.enums.AceTheme;
+import de.f0rce.ace.events.AceValueChanged;
+import org.vaadin.olli.FileDownloadWrapper;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +34,7 @@ import java.util.List;
 public class MainPage extends VerticalLayout implements BeforeEnterObserver {
     AceEditor aceEditor;
 
-    Button runButton,noteButton,dialogueCloseButton;
+    Button runButton,noteButton,dialogueCloseButton,downloadCurrentButton;
 
     TextNote textNote;
     List<AceMode> aceModeList;
@@ -50,6 +52,8 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
     SelectorLists selectorLists;
     OutputDialog outputDialog;
     TextArea inputArea,outputArea;
+
+    FileDownloadWrapper buttonDownloadWrapper;
 
     //disconnect button to convert to floating window
 
@@ -69,6 +73,8 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
 
         runButton = new Button();
         noteButton = new Button();
+
+        downloadCurrentButton = new Button("download");
         dialogueCloseButton = new Button();
 
         textNote = new TextNote();
@@ -107,6 +113,9 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
         aceEditorLayout.setSizeFull();
 
         aceEditor.setTheme(AceTheme.cloud9_night);
+
+        //todo: implement way to set ace mode based on previous sessions
+        aceEditor.setMode(AceMode.python);
         aceEditor.setAutoComplete(true);
         aceEditor.setLiveAutocompletion(true);
 
@@ -114,7 +123,6 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
 
         aceModeSelector = selectorLists.getLanguageSelector();
         fontSizeSelector = selectorLists.getSizeSelector();
-
 
         //save users code to browser local storage
 //        aceEditor.addAceChangedListener((value -> {
@@ -170,6 +178,7 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
         });
 
 
+
         outputDialog.getFooter().add(dialogueCloseButton);
 
 
@@ -178,7 +187,12 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
             textNote.open();
         });
 
-        horizontalLayout.add(fontSizeSelector,aceModeSelector,runButton,noteButton);
+        //mapping ace mode and file extension
+        PlMaps plMaps = new PlMaps();
+        buttonDownloadWrapper = new FileDownloadWrapper(new StreamResource("code"+plMaps.getExtensionByAcemode(aceEditor.getMode()), () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())));
+        buttonDownloadWrapper.wrapComponent(downloadCurrentButton);
+
+        horizontalLayout.add(fontSizeSelector,aceModeSelector,runButton,buttonDownloadWrapper,noteButton);
         horizontalLayout.setSizeFull();
         horizontalLayout.setJustifyContentMode(JustifyContentMode.CENTER);
 //        horizontalLayout.setPadding(true);

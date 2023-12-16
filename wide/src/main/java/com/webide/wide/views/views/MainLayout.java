@@ -1,8 +1,11 @@
 package com.webide.wide.views.views;
 
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.ComponentUtil;
 import com.vaadin.flow.component.accordion.Accordion;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
@@ -10,8 +13,15 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.component.sidenav.SideNavItem;
+import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.router.RouterLink;
+import com.vaadin.flow.server.StreamResource;
+import com.vaadin.flow.server.StreamResourceWriter;
 import com.vaadin.flow.theme.Theme;
 import com.vaadin.flow.theme.lumo.Lumo;
+import de.f0rce.ace.AceEditor;
+
+import java.util.stream.Collectors;
 
 @Theme(themeClass = Lumo.class, variant = Lumo.DARK)
 public class MainLayout extends AppLayout implements AppShellConfigurator {
@@ -37,8 +47,6 @@ public class MainLayout extends AppLayout implements AppShellConfigurator {
 
 
 
-
-
         //file name layout ( to change when a file is selected)
         fileNameLayout = new HorizontalLayout();
         fileNameLayout.setAlignItems(FlexComponent.Alignment.CENTER);
@@ -61,4 +69,5 @@ public class MainLayout extends AppLayout implements AppShellConfigurator {
         addToDrawer(saveProjects,createProject,savedProjects,loadProjects);
         addToNavbar(parentLayout);
     }
+
 }
