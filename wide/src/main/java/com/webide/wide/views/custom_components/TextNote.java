@@ -53,7 +53,6 @@ public class TextNote extends Dialog {
         closeButton.setText("close");
         saveButton.setText("save");
 
-
         //close note on click
         closeButton.addClickListener(event -> {
            this.close();

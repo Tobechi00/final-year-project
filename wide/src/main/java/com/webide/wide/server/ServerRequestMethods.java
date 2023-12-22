@@ -1,5 +1,6 @@
 package com.webide.wide.server;
 
+import com.webide.wide.dao.LoginDao;
 import com.webide.wide.dao.ProgramInputDao;
 import com.webide.wide.dao.ProgramOutputDto;
 import org.springframework.http.HttpEntity;
@@ -22,5 +23,10 @@ public class ServerRequestMethods {
         ResponseEntity<ProgramOutputDto> responseEntity = restTemplate.postForEntity(url,requestEntity, ProgramOutputDto.class);
 
         return responseEntity.getBody();
+    }
+
+    //should return session token and save to web storage
+    public String loginAndReceiveToken(){
+
     }
 }

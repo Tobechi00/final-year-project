@@ -1,4 +1,4 @@
-package com.webide.wide.views.views;
+package com.webide.wide.views.views.mainviews;
 
 import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.ComponentEventListener;
@@ -15,15 +15,13 @@ import com.webide.wide.dao.ProgramInputDao;
 import com.webide.wide.dao.ProgramOutputDto;
 import com.webide.wide.views.custom_components.*;
 import com.webide.wide.server.ServerRequestMethods;
+import com.webide.wide.views.views.mainviews.MainLayout;
 import de.f0rce.ace.AceEditor;
 import de.f0rce.ace.enums.AceMode;
 import de.f0rce.ace.enums.AceTheme;
-import de.f0rce.ace.events.AceValueChanged;
 import org.vaadin.olli.FileDownloadWrapper;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 

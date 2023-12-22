@@ -1,4 +1,4 @@
-package com.webide.wide.views.views;
+package com.webide.wide.views.views.mainviews;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.ComponentUtil;
