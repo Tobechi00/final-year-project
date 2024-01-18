@@ -15,7 +15,6 @@ import com.webide.wide.dao.ProgramInputDao;
 import com.webide.wide.dao.ProgramOutputDto;
 import com.webide.wide.views.custom_components.*;
 import com.webide.wide.server.ServerRequestMethods;
-import com.webide.wide.views.views.mainviews.MainLayout;
 import de.f0rce.ace.AceEditor;
 import de.f0rce.ace.enums.AceMode;
 import de.f0rce.ace.enums.AceTheme;
@@ -26,7 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 //TODO: ADD FILE DOWNLOAD TO DOWNLOAD CURRENT CODE
-@Route(value = "", layout = MainLayout.class)
+@Route(value = "sss", layout = MainLayout.class)
 @PreserveOnRefresh
 @PageTitle("mainpage")
 public class MainPage extends VerticalLayout implements BeforeEnterObserver {
@@ -129,13 +128,9 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
 //        }));
 
 
-        aceModeSelector.addValueChangeListener(event -> {
-            aceEditor.setMode(event.getValue());
-        });
+        aceModeSelector.addValueChangeListener(event -> aceEditor.setMode(event.getValue()) );
 
-        fontSizeSelector.addValueChangeListener(event->{
-            aceEditor.setFontSize(event.getValue());
-        });
+        fontSizeSelector.addValueChangeListener(event-> aceEditor.setFontSize(event.getValue()));
 
         runButton.setText("run code");
         runButton.addClickListener(event -> {
@@ -143,11 +138,11 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
             try {
 
                 if (inputArea.getValue().isEmpty()) {
-                    programOutputDto = serverRequestMethods.sendPostRequest(new ProgramInputDao("python", aceEditor.getValue()));
+                    programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDao("python", aceEditor.getValue()));
                 }else {
 
                     //incase of user input append input to run after code is executed
-                    programOutputDto = serverRequestMethods.sendPostRequest(new ProgramInputDao("python",aceEditor.getValue(),inputArea.getValue()));
+                    programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDao("python",aceEditor.getValue(),inputArea.getValue()));
                 }
 
 
@@ -181,9 +176,7 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
 
 
         noteButton.setText("note");
-        noteButton.addClickListener(event -> {
-            textNote.open();
-        });
+        noteButton.addClickListener(event -> textNote.open());
 
         //mapping ace mode and file extension
         PlMaps plMaps = new PlMaps();

@@ -45,4 +45,14 @@ public class ProgramInputDao {
     public void setUserInput(Optional<String> userInput) {
         this.userInput = userInput;
     }
+
+
+    @Override
+    public String toString() {
+        return "ProgramInputDao{" +
+                "programmingLanguage='" + programmingLanguage + '\'' +
+                ", program='" + program + '\'' +
+                ", userInput=" + userInput +
+                '}';
+    }
 }

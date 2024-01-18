@@ -8,7 +8,7 @@ import java.util.List;
 
 public class SelectorLists {
 
-    public Select<AceMode> getLanguageSelector(){
+    public static Select<AceMode> getLanguageSelector(){
 
         Select<AceMode> aceModeSelect = new Select<>();
         List<AceMode> list = new ArrayList<>();
@@ -21,12 +21,13 @@ public class SelectorLists {
 
         aceModeSelect.setItems(list);
         aceModeSelect.setValue(list.get(0));
-
+        aceModeSelect.setLabel("language");
+        aceModeSelect.setSizeFull();
 
         return aceModeSelect;
     }
 
-    public Select<Integer> getSizeSelector(){
+    public static Select<Integer> getSizeSelector(){
         Select<Integer> integerSelect = new Select<>();
         List<Integer> list = new ArrayList<>();
 
@@ -40,6 +41,8 @@ public class SelectorLists {
 
         integerSelect.setItems(list);
         integerSelect.setValue(list.get(0));
+        integerSelect.setLabel("font size");
+        integerSelect.setSizeFull();
 
         return integerSelect;
     }

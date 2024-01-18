@@ -1,13 +1,23 @@
 package com.webide.wide.views.views.loginregistrationviews;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.webide.wide.dao.LoginDao;
+import com.webide.wide.server.ServerRequestMethods;
+import com.webide.wide.views.views.mainviews.EditorView;
+import com.webide.wide.views.views.mainviews.MainPage;
+import org.springframework.web.client.HttpClientErrorException;
+
+import javax.security.sasl.AuthenticationException;
 
 
 @PageTitle("login")
@@ -16,26 +26,49 @@ public class LoginView extends VerticalLayout {
 
     VerticalLayout formLayout;
     H2 title;
-    TextField usernameField, passwordField;
+    Paragraph paragraph;
+    TextField usernameField;
+    PasswordField passwordField;
     Button loginButton;
+    ServerRequestMethods serverRequestMethods;
 
     public LoginView(){
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
+        setSizeFull();
+
+        serverRequestMethods = new ServerRequestMethods();
 
         formLayout = new VerticalLayout();
+        paragraph = new Paragraph();
+        paragraph.getStyle().setColor("red");
+
         title = new H2("log in");
         usernameField = new TextField();
-        passwordField = new TextField();
+        passwordField = new PasswordField();
         loginButton = new Button("log in");
-
-        formLayout.setAlignItems(Alignment.CENTER);
-        formLayout.setJustifyContentMode(JustifyContentMode.CENTER);
 
         usernameField.setPlaceholder("username");
         passwordField.setPlaceholder("password");
 
-        formLayout.add(title,usernameField,passwordField,loginButton);
+        loginButton.addClickListener(login->{
+            if (!usernameField.isEmpty() || !passwordField.isEmpty()){
+                try {
+                    serverRequestMethods.sendLoginRequest(
+                            new LoginDao(usernameField.getValue(),passwordField.getValue()));
+                    UI.getCurrent().navigate(EditorView.class);
+                } catch (HttpClientErrorException e) {
+                    paragraph.setText("please check your details");
+                }
+            }
+        });
+
+        formLayout.setAlignItems(Alignment.CENTER);
+        formLayout.setJustifyContentMode(JustifyContentMode.CENTER);
+        formLayout.setPadding(true);
+
+        formLayout.add(title,paragraph,usernameField,passwordField,loginButton);
+        add(formLayout);
     }
 
 }
