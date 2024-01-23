@@ -1,6 +1,7 @@
 package com.webide.wide.views.views.mainviews;
 
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.Unit;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H4;
@@ -8,13 +9,13 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.page.Page;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.textfield.TextArea;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.PreserveOnRefresh;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 import com.vaadin.flow.server.StreamResource;
+import com.vaadin.flow.server.VaadinSession;
 import com.webide.wide.dao.ProgramInputDao;
 import com.webide.wide.dao.ProgramOutputDto;
 import com.webide.wide.server.ServerRequestMethods;
@@ -22,8 +23,10 @@ import com.webide.wide.views.custom_components.CustomNotification;
 import com.webide.wide.views.custom_components.PlMaps;
 import com.webide.wide.views.custom_components.SelectorLists;
 import com.webide.wide.views.custom_components.TextNote;
+import com.webide.wide.views.views.loginregistrationviews.LoginView;
 import de.f0rce.ace.AceEditor;
 import de.f0rce.ace.enums.AceMode;
+import elemental.json.JsonValue;
 import org.vaadin.olli.FileDownloadWrapper;
 
 import java.io.ByteArrayInputStream;
@@ -32,9 +35,10 @@ import java.io.ByteArrayInputStream;
 @Route(value = "",layout = MainLayout.class)
 @PreserveOnRefresh
 @PageTitle("W-ide")
-public class EditorView extends VerticalLayout {
+public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     //todo: error with stacking error notifications ensure to rectify, also consider using an arrow to open and close the utility window
+    //todo: store user id with token
 
     AceEditor aceEditor;
     VerticalLayout sideGutter,ioLayout,selectorLayout;
@@ -127,7 +131,6 @@ public class EditorView extends VerticalLayout {
 
         executeButton.addClickListener(buttonClickEvent -> {
             runCode(aceEditor.getValue(),aceModeSelector.getValue().toString(),outputArea,inputArea);
-            System.out.println(aceEditor.getMode());
         });
 
         ioLayout.add(inputArea,outputArea);
@@ -153,19 +156,18 @@ public class EditorView extends VerticalLayout {
         add(splitLayout);
     }
 
+    //todo: remove text area from method parameters
     public void runCode(String code,String language,TextArea outputArea,TextArea inputArea){
         ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
-        ProgramOutputDto programOutputDto = new ProgramOutputDto();
 
             try {
-
+                ProgramOutputDto programOutputDto;
                 if (inputArea.getValue().isEmpty()) {
                     programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDao(language, code));
                 }else {
                     //incase of user input append input to run after code is executed
                     programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDao(language,code,inputArea.getValue()));
                 }
-
 
                 String output = programOutputDto.getProgramOutput()+"\n"+"Exit Code: "+programOutputDto.getExitCode();
 
@@ -189,5 +191,12 @@ public class EditorView extends VerticalLayout {
             }catch (Exception e){
                 new CustomNotification("Error: Connection to the server could not be established", NotificationVariant.LUMO_ERROR).open();
             }
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
+        if (VaadinSession.getCurrent().getAttribute("Token") == null){
+            beforeEnterEvent.rerouteTo(LoginView.class);
+        }
     }
 }

@@ -2,10 +2,8 @@ package com.webide.wide.views.views.loginregistrationviews;
 
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
-import com.vaadin.flow.component.login.LoginForm;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -14,10 +12,7 @@ import com.vaadin.flow.router.Route;
 import com.webide.wide.dao.LoginDao;
 import com.webide.wide.server.ServerRequestMethods;
 import com.webide.wide.views.views.mainviews.EditorView;
-import com.webide.wide.views.views.mainviews.MainPage;
 import org.springframework.web.client.HttpClientErrorException;
-
-import javax.security.sasl.AuthenticationException;
 
 
 @PageTitle("login")
@@ -54,7 +49,7 @@ public class LoginView extends VerticalLayout {
         loginButton.addClickListener(login->{
             if (!usernameField.isEmpty() || !passwordField.isEmpty()){
                 try {
-                    serverRequestMethods.sendLoginRequest(
+                    serverRequestMethods.sendLoginRequestAndReceiveToken(
                             new LoginDao(usernameField.getValue(),passwordField.getValue()));
                     UI.getCurrent().navigate(EditorView.class);
                 } catch (HttpClientErrorException e) {

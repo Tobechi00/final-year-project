@@ -186,7 +186,6 @@ public class MainPage extends VerticalLayout implements BeforeEnterObserver {
         horizontalLayout.add(fontSizeSelector,aceModeSelector,runButton,buttonDownloadWrapper,noteButton);
         horizontalLayout.setSizeFull();
         horizontalLayout.setJustifyContentMode(JustifyContentMode.CENTER);
-//        horizontalLayout.setPadding(true);
 
         ioLayout.add(inputArea,outputArea);
 
