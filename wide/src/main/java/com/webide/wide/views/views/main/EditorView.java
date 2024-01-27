@@ -1,7 +1,6 @@
-package com.webide.wide.views.views.mainviews;
+package com.webide.wide.views.views.main;
 
 
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.Unit;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H4;
@@ -9,7 +8,6 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.page.Page;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.textfield.TextArea;
@@ -23,10 +21,9 @@ import com.webide.wide.views.custom_components.CustomNotification;
 import com.webide.wide.views.custom_components.PlMaps;
 import com.webide.wide.views.custom_components.SelectorLists;
 import com.webide.wide.views.custom_components.TextNote;
-import com.webide.wide.views.views.loginregistrationviews.LoginView;
+import com.webide.wide.views.views.loginregistration.LoginView;
 import de.f0rce.ace.AceEditor;
 import de.f0rce.ace.enums.AceMode;
-import elemental.json.JsonValue;
 import org.vaadin.olli.FileDownloadWrapper;
 
 import java.io.ByteArrayInputStream;
@@ -38,7 +35,7 @@ import java.io.ByteArrayInputStream;
 public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     //todo: error with stacking error notifications ensure to rectify, also consider using an arrow to open and close the utility window
-    //todo: store user id with token
+    //todo: button to instantly close sidebar
 
     AceEditor aceEditor;
     VerticalLayout sideGutter,ioLayout,selectorLayout;
@@ -195,7 +192,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
-        if (VaadinSession.getCurrent().getAttribute("Token") == null){
+        if (VaadinSession.getCurrent().getAttribute("USER_TOKEN") == null){
             beforeEnterEvent.rerouteTo(LoginView.class);
         }
     }

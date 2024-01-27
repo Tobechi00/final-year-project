@@ -1,15 +1,11 @@
 package com.webide.wide.server;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.page.Page;
-import com.vaadin.flow.component.page.PendingJavaScriptResult;
 import com.vaadin.flow.server.VaadinSession;
 import com.webide.wide.dao.LoginDao;
 import com.webide.wide.dao.ProgramInputDao;
 import com.webide.wide.dao.ProgramOutputDto;
+import com.webide.wide.dao.UserPayloadDao;
 import com.webide.wide.interceptorconfig.RestTemplateHeaderModifierInterceptor;
-import elemental.json.JsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
@@ -18,7 +14,6 @@ import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-import org.vaadin.firitin.util.WebStorage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +27,8 @@ public class ServerRequestMethods {
     public ProgramOutputDto sendCodeRunRequest(ProgramInputDao programInputDao) throws HttpClientErrorException {
         ProgramOutputDto programOutputDto = new ProgramOutputDto();
         try {
-            String token = (String) VaadinSession.getCurrent().getAttribute("Token");
+            String token = (String) VaadinSession.getCurrent().getAttribute("USER_TOKEN");
+
             //adding auth header to rest template
             RestTemplate restTemplate = new RestTemplate();
             List<ClientHttpRequestInterceptor> interceptors
@@ -55,7 +51,7 @@ public class ServerRequestMethods {
         }
     }
 
-    public void sendLoginRequestAndReceiveToken(LoginDao loginDao) throws HttpClientErrorException {
+    public void sendLoginRequestAndReceivePayload(LoginDao loginDao) throws HttpClientErrorException {
 
             RestTemplate restTemplate = new RestTemplate();
 
@@ -63,10 +59,19 @@ public class ServerRequestMethods {
 
             HttpEntity<LoginDao> requestEntity = new HttpEntity<>(loginDao);
 
-            ResponseEntity<String> tokenResponse = restTemplate.postForEntity(url,requestEntity, String.class);
+            ResponseEntity<UserPayloadDao> payloadResponse = restTemplate.postForEntity(url,requestEntity, UserPayloadDao.class);
 
-            //attaching token to session
-        VaadinSession.getCurrent().setAttribute("Token",tokenResponse.getBody());
+            UserPayloadDao userPayloadDao = payloadResponse.getBody();
+
+            //binding to session
+        if (userPayloadDao != null) {
+            VaadinSession.getCurrent().setAttribute("USER_TOKEN", userPayloadDao.getToken());
+            VaadinSession.getCurrent().setAttribute("USERNAME", userPayloadDao.getUsername());
+            VaadinSession.getCurrent().setAttribute("FIRSTNAME", userPayloadDao.getFirstName());
+            VaadinSession.getCurrent().setAttribute("LASTNAME", userPayloadDao.getLastName());
+            VaadinSession.getCurrent().setAttribute("ID", userPayloadDao.getId());
+        }
+
     }
 
 

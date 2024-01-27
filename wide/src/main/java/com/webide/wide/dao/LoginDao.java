@@ -5,7 +5,7 @@ public class LoginDao {
     private String password;
 
     public LoginDao(){};
-    public LoginDao(String password,String username){
+    public LoginDao(String username, String password){
         this.username = username;
         this.password = password;
     }

@@ -23,7 +23,7 @@ public class RestTemplateHeaderModifierInterceptor implements ClientHttpRequestI
     @Override
     public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
         try {
-            String token = VaadinSession.getCurrent().getAttribute("Token").toString();
+            String token = VaadinSession.getCurrent().getAttribute("USER_TOKEN").toString();
             //works but token empty
             request.getHeaders().add("authentication",token);
             return execution.execute(request,body);
