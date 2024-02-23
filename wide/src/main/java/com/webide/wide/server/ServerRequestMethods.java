@@ -6,9 +6,9 @@ import com.webide.wide.dao.ProgramInputDao;
 import com.webide.wide.dao.ProgramOutputDto;
 import com.webide.wide.dao.UserPayloadDao;
 import com.webide.wide.interceptorconfig.RestTemplateHeaderModifierInterceptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.util.CollectionUtils;
@@ -16,31 +16,27 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 public class ServerRequestMethods {
 
-    Logger logger = LoggerFactory.getLogger(ServerRequestMethods.class);
+//    Logger logger = LoggerFactory.getLogger(ServerRequestMethods.class);
 
+    String apiURL = "http://localhost:8080/w-ide/api";
 
+    //sends a request to run code
     public ProgramOutputDto sendCodeRunRequest(ProgramInputDao programInputDao) throws HttpClientErrorException {
-        ProgramOutputDto programOutputDto = new ProgramOutputDto();
+        ProgramOutputDto programOutputDto;
         try {
-            String token = (String) VaadinSession.getCurrent().getAttribute("USER_TOKEN");
+            RestTemplate restTemplate = new RestTemplate();
 
             //adding auth header to rest template
-            RestTemplate restTemplate = new RestTemplate();
-            List<ClientHttpRequestInterceptor> interceptors
-                    = restTemplate.getInterceptors();
-            if (CollectionUtils.isEmpty(interceptors)) {
-                interceptors = new ArrayList<>();
-            }
+            setInterceptors(restTemplate);
 
-            interceptors.add(new RestTemplateHeaderModifierInterceptor());
-            restTemplate.setInterceptors(interceptors);
-
-            String url = "http://localhost:8080/w-ide/api/python/submit";
+            String url = apiURL+"/python/submit";
             ResponseEntity<ProgramOutputDto> responseEntity = restTemplate.postForEntity(url,programInputDao, ProgramOutputDto.class);
 
             programOutputDto = responseEntity.getBody();
@@ -51,11 +47,12 @@ public class ServerRequestMethods {
         }
     }
 
+    //main login method
     public void sendLoginRequestAndReceivePayload(LoginDao loginDao) throws HttpClientErrorException {
 
             RestTemplate restTemplate = new RestTemplate();
 
-            String url = "http://localhost:8080/w-ide/api/login";
+            String url = apiURL+"/login";
 
             HttpEntity<LoginDao> requestEntity = new HttpEntity<>(loginDao);
 
@@ -74,5 +71,75 @@ public class ServerRequestMethods {
 
     }
 
+    public void saveFile(String fileName,String fileContent){
+        RestTemplate restTemplate = new RestTemplate();
+        setInterceptors(restTemplate);
 
+        String url = apiURL+"/files/save/"+VaadinSession.getCurrent().getAttribute("ID");
+
+        CustomFile customFile = new CustomFile(fileName,fileContent);
+        HttpEntity<CustomFile> httpEntity = new HttpEntity<>(customFile);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(url,httpEntity,String.class);
+    }
+    //custom file dto
+    record CustomFile(String fileName,String fileContent){}
+
+
+    //get a list of userfiles
+    //request entity is null because get request
+    //ParameterizedTypeReference<List<String>> tells RestTemplate to expect a list of strings in the response body.
+    public Map<String,String> getUserFiles(Long userId){
+        RestTemplate restTemplate = new RestTemplate();
+        String url =  apiURL+"/files/getAllFiles/"+userId;
+
+        setInterceptors(restTemplate);
+        ResponseEntity<List<String>> responseEntity = restTemplate.exchange(url, HttpMethod.GET, null, new ParameterizedTypeReference<List<String>>() {});
+
+        List<String> fileNameList;
+        //still need to preserve full file paths for requests
+
+        Map<String,String> filePathMap = new HashMap<>();
+
+        fileNameList = responseEntity.getBody();
+
+        assert fileNameList != null;
+        for (String s : fileNameList){
+            filePathMap.put(extractFileName(s),s);
+        }
+
+        return filePathMap;
+    }
+
+    //todo: fix method
+    public String getFileContent(String path){
+        RestTemplate restTemplate = new RestTemplate();
+        String url = apiURL+"/files/getFileContent?path="+path;
+        setInterceptors(restTemplate);
+
+        ResponseEntity<String> responseEntity = restTemplate.getForEntity(url,String.class);
+        return responseEntity.getBody();
+    }
+
+    //adds token to header
+    public void setInterceptors(RestTemplate restTemplate){
+        List<ClientHttpRequestInterceptor> interceptors
+                = restTemplate.getInterceptors();
+        if (CollectionUtils.isEmpty(interceptors)) {
+            interceptors = new ArrayList<>();
+        }
+
+        interceptors.add(new RestTemplateHeaderModifierInterceptor());
+        restTemplate.setInterceptors(interceptors);
+    }
+
+    public String extractFileName(String path){
+        int beginning = path.lastIndexOf("\\")+1;
+        int end = path.length();
+
+        path = path.substring(beginning,end);
+        return path;
+    }
+
+    //todo: get file by name
 }

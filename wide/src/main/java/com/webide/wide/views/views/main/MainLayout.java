@@ -1,60 +1,48 @@
 package com.webide.wide.views.views.main;
 
 import com.vaadin.flow.component.applayout.AppLayout;
-import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.page.AppShellConfigurator;
-import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.theme.Theme;
 import com.vaadin.flow.theme.lumo.Lumo;
 
-@Theme(themeClass = Lumo.class, variant = Lumo.DARK)
+@Theme(themeClass = Lumo.class, variant = Lumo.LIGHT)
 public class MainLayout extends AppLayout implements AppShellConfigurator {
 
-    SideNavItem saveFile,saveProjects,createProject,savedProjects,loadProjects;
     Avatar avatar;
-    Paragraph paragraph;
-    DrawerToggle drawerToggle;
+    Paragraph spacerOne;
+    Paragraph spacerTwo;
+    H4 header;
 
-    H2 applicationHeader;
 
-    HorizontalLayout fileNameLayout,brandTitleLayout, avatarLayout,parentLayout;
+    HorizontalLayout brandTitleLayout, avatarLayout,parentLayout;
 
 
 
     public MainLayout(){
         //todo: add functionality
-        saveFile = new SideNavItem("download file");
-        createProject = new SideNavItem("New project");
-        savedProjects = new SideNavItem("Saved projects");
-        loadProjects = new SideNavItem("Load projects");
         avatarLayout = new HorizontalLayout();
+        header = new H4("Web_Weaver");
+        //
+        header.getStyle().setPadding("5").setColor("gray");
 
-
-        drawerToggle = new DrawerToggle();
-
-
-
-        //file name layout ( to change when a file is selected)
-//        fileNameLayout = new HorizontalLayout();
-//        fileNameLayout.setAlignItems(FlexComponent.Alignment.CENTER);
-//        fileNameLayout.setSizeFull();
-//        fileNameLayout.add(fileName);
-
-        //layout for logged-in username and avatar (might change to fullname)
         String firstName = (String) VaadinSession.getCurrent().getAttribute("FIRSTNAME");
         String lastName = (String) VaadinSession.getCurrent().getAttribute("LASTNAME");
 
         avatar = new Avatar(firstName+" "+lastName);
-        avatar.getStyle().setColor("white");
-        paragraph = new Paragraph("  ");
+//        avatar.getStyle().setColor("white");
+        avatar.getStyle().setPadding("5");
 
-        avatarLayout.add(avatar,paragraph);
+        spacerOne = new Paragraph("  ");
+        spacerTwo = new Paragraph("  ");
+
+        avatarLayout.add(avatar,spacerTwo);
         avatarLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
         avatarLayout.setAlignItems(FlexComponent.Alignment.CENTER);
 
@@ -64,7 +52,7 @@ public class MainLayout extends AppLayout implements AppShellConfigurator {
 
         //contains the drawer toggle and the application name
         brandTitleLayout = new HorizontalLayout();
-        brandTitleLayout.add(drawerToggle);
+        brandTitleLayout.add(spacerOne,header);
         brandTitleLayout.setSizeFull();
         brandTitleLayout.setAlignItems(FlexComponent.Alignment.START);
 
@@ -73,8 +61,6 @@ public class MainLayout extends AppLayout implements AppShellConfigurator {
         parentLayout.add(brandTitleLayout, avatarLayout);
         parentLayout.setSizeFull();
 
-
-        addToDrawer(saveProjects,createProject,savedProjects,loadProjects);
         addToNavbar(parentLayout);
     }
 

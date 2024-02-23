@@ -3,7 +3,13 @@ package com.webide.wide.views.views.main;
 
 import com.vaadin.flow.component.Unit;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
+import com.vaadin.flow.component.contextmenu.MenuItem;
+import com.vaadin.flow.component.contextmenu.SubMenu;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H4;
+import com.vaadin.flow.component.listbox.ListBox;
+import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
@@ -11,6 +17,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.*;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.server.VaadinSession;
@@ -24,9 +31,12 @@ import com.webide.wide.views.custom_components.TextNote;
 import com.webide.wide.views.views.loginregistration.LoginView;
 import de.f0rce.ace.AceEditor;
 import de.f0rce.ace.enums.AceMode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.vaadin.olli.FileDownloadWrapper;
 
 import java.io.ByteArrayInputStream;
+import java.util.Map;
 
 
 @Route(value = "",layout = MainLayout.class)
@@ -36,6 +46,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     //todo: error with stacking error notifications ensure to rectify, also consider using an arrow to open and close the utility window
     //todo: button to instantly close sidebar
+    //todo: work on saving to backend
 
     AceEditor aceEditor;
     VerticalLayout sideGutter,ioLayout,selectorLayout;
@@ -43,6 +54,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     FileDownloadWrapper buttonDownloadWrapper;
     HorizontalLayout utilityButtonLayout;
     Button executeButton,downloadButton,noteButton;
+    MenuBar fileButton;
     Select<AceMode> aceModeSelector;
     Select<Integer> fontSizeSelector;
     PlMaps plMaps;
@@ -51,6 +63,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     TextArea outputArea;
     TextNote textNote;
     SplitLayout splitLayout;
+    Logger logger = LoggerFactory.getLogger(EditorView.class);
     public EditorView(){
         setSizeFull();
         setAlignItems(Alignment.CENTER);
@@ -84,9 +97,12 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         //buttons
         executeButton = new Button("Run");
         downloadButton = new Button("Download");
-
         noteButton = new Button("Note",buttonClickEvent -> textNote.open());
+        fileButton = new MenuBar();
+        MenuItem menuItem = fileButton.addItem("file");
 
+
+        //
         buttonDownloadWrapper = new FileDownloadWrapper(new StreamResource(currentFileName.getText()+plMaps.getExtensionByAcemode(aceEditor.getMode()), () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())));
         buttonDownloadWrapper.wrapComponent(downloadButton);
 
@@ -117,7 +133,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             utilityButtonLayout.add(buttonDownloadWrapper);
         });
 
-        utilityButtonLayout.add(executeButton,noteButton,buttonDownloadWrapper);
+        utilityButtonLayout.add(executeButton,noteButton,fileButton,buttonDownloadWrapper);
 //        utilityButtonLayout.setJustifyContentMode(JustifyContentMode.CENTER);
 
         fontSizeSelector.addValueChangeListener(event-> aceEditor.setFontSize(event.getValue()));
@@ -126,9 +142,26 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 //        selectorLayout.setJustifyContentMode(JustifyContentMode.CENTER);
 
 
-        executeButton.addClickListener(buttonClickEvent -> {
-            runCode(aceEditor.getValue(),aceModeSelector.getValue().toString(),outputArea,inputArea);
+        executeButton.addClickListener(buttonClickEvent -> runCode(aceEditor.getValue(),aceModeSelector.getValue().toString(),outputArea,inputArea));
+
+        //
+        SubMenu subMenu = menuItem.getSubMenu();
+
+
+        subMenu.addItem("Save",menuItemClickEvent -> aceEditor.getValue());
+        subMenu.addItem("Save As",onClick -> launchSaveDialogue());
+        subMenu.addItem("Open Recent",onClick->{
+            try {
+                ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
+                launchRecentFilesDialog(serverRequestMethods.getUserFiles((Long) VaadinSession.getCurrent().getAttribute("ID")));
+            }catch (Exception e){
+                logger.error(e.getMessage());
+            }
         });
+        subMenu.addItem("New Project");
+
+
+
 
         ioLayout.add(inputArea,outputArea);
         ioLayout.setJustifyContentMode(JustifyContentMode.CENTER);
@@ -190,10 +223,74 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             }
     }
 
+
+    public void launchSaveDialogue(){
+        ConfirmDialog dialog = new ConfirmDialog();
+        TextField fileNameField  = new TextField();
+
+        Button saveButton = new Button("Save");
+        Button cancelButton = new Button();
+
+
+        fileNameField.setLabel("File Name");
+
+        dialog.setHeader("Save As");
+
+        dialog.setConfirmButton(saveButton);
+        dialog.setCancelButton(cancelButton);
+
+        dialog.add(fileNameField);
+
+        if (fileNameField.isEmpty()){
+            saveButton.setEnabled(false);
+        }
+
+        fileNameField.addValueChangeListener(onChange-> saveButton.setEnabled(!onChange.getValue().isEmpty()));
+
+        dialog.open();
+    }
+
+    //dialog for recent files
+    public void launchRecentFilesDialog(Map<String,String> fileList){
+        Dialog dialog = new Dialog();
+
+        dialog.setHeaderTitle("Recent Files");
+        ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
+        StringBuilder stringBuilder = new StringBuilder();
+
+
+        ListBox<String> listBox = new ListBox<>();
+        listBox.addValueChangeListener(value->{
+            stringBuilder.setLength(0);
+            stringBuilder.append(fileList.get(value.getValue()));
+        });
+        listBox.setItems(fileList.keySet().stream().toList());
+        dialog.add(listBox);
+
+
+        Button openFileButton = new Button("open");
+        openFileButton.addClickListener(buttonClickEvent -> {
+            if (!stringBuilder.isEmpty()) {
+                try {
+                    aceEditor.setValue(serverRequestMethods.getFileContent(stringBuilder.toString()));
+                    dialog.close();
+                }catch (Exception e){
+                    //log error
+                }
+            }
+        });
+        //todo: listener to open selected file
+        //todo:add file creation time
+
+        dialog.getFooter().add(openFileButton);
+        dialog.open();
+    }
+
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
         if (VaadinSession.getCurrent().getAttribute("USER_TOKEN") == null){
             beforeEnterEvent.rerouteTo(LoginView.class);
         }
     }
+
 }
