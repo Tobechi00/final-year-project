@@ -8,7 +8,6 @@ public class CustomNotification extends Notification {
     public CustomNotification(String message, NotificationVariant warningLevel){
         setText(message);
         addThemeVariants(warningLevel);
-
         setPosition(Position.TOP_CENTER);
         setDuration(3000);
     }

@@ -25,9 +25,9 @@ import com.webide.wide.dao.ProgramInputDao;
 import com.webide.wide.dao.ProgramOutputDto;
 import com.webide.wide.server.ServerRequestMethods;
 import com.webide.wide.views.custom_components.CustomNotification;
-import com.webide.wide.views.custom_components.PlMaps;
 import com.webide.wide.views.custom_components.SelectorLists;
 import com.webide.wide.views.custom_components.TextNote;
+import com.webide.wide.views.util.ExtensionMapper;
 import com.webide.wide.views.views.loginregistration.LoginView;
 import de.f0rce.ace.AceEditor;
 import de.f0rce.ace.enums.AceMode;
@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.vaadin.olli.FileDownloadWrapper;
 
 import java.io.ByteArrayInputStream;
+import java.nio.channels.Selector;
 import java.util.Map;
 
 
@@ -45,8 +46,8 @@ import java.util.Map;
 public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     //todo: error with stacking error notifications ensure to rectify, also consider using an arrow to open and close the utility window
-    //todo: button to instantly close sidebar
-    //todo: work on saving to backend
+
+    //todo:change aceMode based on file extension
 
     AceEditor aceEditor;
     VerticalLayout sideGutter,ioLayout,selectorLayout;
@@ -57,12 +58,14 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     MenuBar fileButton;
     Select<AceMode> aceModeSelector;
     Select<Integer> fontSizeSelector;
-    PlMaps plMaps;
+    ExtensionMapper extensionMapper;
     TextArea inputArea;
     H4 currentFileName;
     TextArea outputArea;
     TextNote textNote;
+    String currentFilePath;
     SplitLayout splitLayout;
+    ServerRequestMethods serverRequestMethods;
     Logger logger = LoggerFactory.getLogger(EditorView.class);
     public EditorView(){
         setSizeFull();
@@ -74,7 +77,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         aceEditor.setSizeFull();
         aceEditor.setAutoComplete(true);
         aceEditor.setLiveAutocompletion(true);
-        aceEditor.setMode(AceMode.python);
+        aceEditor.setMode(AceMode.text);
 
 
         //layouts
@@ -89,9 +92,13 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         outputArea = new TextArea();
 
         //
-        currentFileName = new H4("untitled document");
+        serverRequestMethods = new ServerRequestMethods();
+
+        //
+        currentFileName = new H4("Untitled Document");
+        currentFilePath = "";
+
         textNote = new TextNote();
-        plMaps = new PlMaps();
 
 
         //buttons
@@ -101,9 +108,11 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         fileButton = new MenuBar();
         MenuItem menuItem = fileButton.addItem("file");
 
+        extensionMapper = new ExtensionMapper();
 
-        //
-        buttonDownloadWrapper = new FileDownloadWrapper(new StreamResource(currentFileName.getText()+plMaps.getExtensionByAcemode(aceEditor.getMode()), () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())));
+
+        //wrapping button with a download wrapper
+        buttonDownloadWrapper = new FileDownloadWrapper(new StreamResource(currentFileName.getText()+extensionMapper.getExtensionByAceMode(aceEditor.getMode()), () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())));
         buttonDownloadWrapper.wrapComponent(downloadButton);
 
 
@@ -119,7 +128,6 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         outputArea.setReadOnly(true);
 
 
-
         aceModeSelector = SelectorLists.getLanguageSelector();
         fontSizeSelector = SelectorLists.getSizeSelector();
 
@@ -127,7 +135,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             aceEditor.setMode(event.getValue());
             utilityButtonLayout.remove(buttonDownloadWrapper);
 
-            buttonDownloadWrapper = new FileDownloadWrapper(new StreamResource(currentFileName.getText()+plMaps.getExtensionByAcemode(aceEditor.getMode()), () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())));
+            buttonDownloadWrapper = new FileDownloadWrapper(new StreamResource(currentFileName.getText()+extensionMapper.getExtensionByAceMode(aceEditor.getMode()), () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())));
             buttonDownloadWrapper.wrapComponent(downloadButton);
 
             utilityButtonLayout.add(buttonDownloadWrapper);
@@ -148,7 +156,18 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         SubMenu subMenu = menuItem.getSubMenu();
 
 
-        subMenu.addItem("Save",menuItemClickEvent -> aceEditor.getValue());
+        subMenu.addItem("Save",menuItemClickEvent -> {
+            if ( !currentFileName.getText().isEmpty() || !currentFilePath.isEmpty()){
+                try {
+                    serverRequestMethods.saveFile(currentFilePath,aceEditor.getValue());
+                    //--launch saved dialogue -- might make dropdown instead
+                }catch (Exception e){
+                    //launch error dialogue
+                }
+            }else{
+                //let user know file is not saved and to try save as
+            }
+        });
         subMenu.addItem("Save As",onClick -> launchSaveDialogue());
         subMenu.addItem("Open Recent",onClick->{
             try {
@@ -166,6 +185,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         ioLayout.add(inputArea,outputArea);
         ioLayout.setJustifyContentMode(JustifyContentMode.CENTER);
 
+        //side gutter
         sideGutter.setAlignItems(Alignment.CENTER);
         sideGutter.setJustifyContentMode(JustifyContentMode.CENTER);
         sideGutter.add(currentFileName,utilityButtonLayout,selectorLayout,ioLayout);
@@ -195,7 +215,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 if (inputArea.getValue().isEmpty()) {
                     programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDao(language, code));
                 }else {
-                    //incase of user input append input to run after code is executed
+                    //in case of user input append input to run after code is executed
                     programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDao(language,code,inputArea.getValue()));
                 }
 
@@ -224,12 +244,30 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     }
 
 
+    //save name can't be untitled document!!!
     public void launchSaveDialogue(){
         ConfirmDialog dialog = new ConfirmDialog();
         TextField fileNameField  = new TextField();
 
+        ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
+
         Button saveButton = new Button("Save");
-        Button cancelButton = new Button();
+        Button cancelButton = new Button("Cancel");
+
+        saveButton.addClickListener(buttonClickEvent -> {
+            try {
+                ExtensionMapper extensionMapper = new ExtensionMapper();
+                String basePath = "C:\\Users\\tobec\\ServerData\\user-files\\";
+                String completePath = basePath+fileNameField.getValue()+extensionMapper.getExtensionByAceMode(aceEditor.getMode());
+
+                serverRequestMethods.saveFileAs(currentFilePath,completePath,aceEditor.getValue());
+
+                currentFilePath = basePath+fileNameField.getValue();
+                currentFileName.setText(fileNameField.getValue()+extensionMapper.getExtensionByAceMode(aceEditor.getMode()));
+            }catch (Exception e){
+                logger.error(e.getMessage());
+            }
+        });
 
 
         fileNameField.setLabel("File Name");
@@ -250,6 +288,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         dialog.open();
     }
 
+
     //dialog for recent files
     public void launchRecentFilesDialog(Map<String,String> fileList){
         Dialog dialog = new Dialog();
@@ -267,12 +306,18 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         listBox.setItems(fileList.keySet().stream().toList());
         dialog.add(listBox);
 
-
+        //todo:extract to method
         Button openFileButton = new Button("open");
         openFileButton.addClickListener(buttonClickEvent -> {
             if (!stringBuilder.isEmpty()) {
                 try {
                     aceEditor.setValue(serverRequestMethods.getFileContent(stringBuilder.toString()));
+
+                    //setting current filepath and name
+                    currentFilePath = stringBuilder.toString();
+                    currentFileName.setText(stringBuilder.substring(stringBuilder.lastIndexOf("\\")+1));
+                    setAceModeByFileExtension(stringBuilder.substring(stringBuilder.indexOf(".")));
+
                     dialog.close();
                 }catch (Exception e){
                     //log error
@@ -285,6 +330,14 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         dialog.getFooter().add(openFileButton);
         dialog.open();
     }
+
+    public void setAceModeByFileExtension(String extension){
+        extensionMapper = new ExtensionMapper();
+
+        aceModeSelector.setValue(extensionMapper.getAceModeByExtension(extension));
+    }
+
+    //todo: method to launch new project
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {

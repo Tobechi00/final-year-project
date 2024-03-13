@@ -71,19 +71,35 @@ public class ServerRequestMethods {
 
     }
 
+    //save
     public void saveFile(String fileName,String fileContent){
         RestTemplate restTemplate = new RestTemplate();
         setInterceptors(restTemplate);
 
         String url = apiURL+"/files/save/"+VaadinSession.getCurrent().getAttribute("ID");
 
-        CustomFile customFile = new CustomFile(fileName,fileContent);
-        HttpEntity<CustomFile> httpEntity = new HttpEntity<>(customFile);
+        SaveFileDTO saveFileDTO = new SaveFileDTO(fileName,fileContent);
+        HttpEntity<SaveFileDTO> httpEntity = new HttpEntity<>(saveFileDTO);
 
         ResponseEntity<String> response = restTemplate.postForEntity(url,httpEntity,String.class);
     }
     //custom file dto
-    record CustomFile(String fileName,String fileContent){}
+    record SaveFileDTO(String fileName,String fileContent){}
+
+
+    //save as
+    public void saveFileAs(String oldFilePath,String newFilePath,String fileContent){
+        RestTemplate restTemplate = new RestTemplate();
+        setInterceptors(restTemplate);
+
+        String url = apiURL+"/files/save-as/"+VaadinSession.getCurrent().getAttribute("ID");
+        SaveAsFileDTO saveAsFileDTO = new SaveAsFileDTO(oldFilePath,newFilePath,fileContent);
+
+        HttpEntity<SaveAsFileDTO> httpEntity = new HttpEntity<>(saveAsFileDTO);
+        ResponseEntity<String> response = restTemplate.postForEntity(url,httpEntity,String.class);
+    }
+
+    record SaveAsFileDTO(String oldFilePath,String newFilePath,String fileContent){}
 
 
     //get a list of userfiles
@@ -111,7 +127,8 @@ public class ServerRequestMethods {
         return filePathMap;
     }
 
-    //todo: fix method
+
+    //retrieves file content
     public String getFileContent(String path){
         RestTemplate restTemplate = new RestTemplate();
         String url = apiURL+"/files/getFileContent?path="+path;

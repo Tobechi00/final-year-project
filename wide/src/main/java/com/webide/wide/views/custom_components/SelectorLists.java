@@ -13,6 +13,7 @@ public class SelectorLists {
         Select<AceMode> aceModeSelect = new Select<>();
         List<AceMode> list = new ArrayList<>();
 
+        list.add(AceMode.text);
         list.add(AceMode.python);
         list.add(AceMode.lisp);
         list.add(AceMode.java);
