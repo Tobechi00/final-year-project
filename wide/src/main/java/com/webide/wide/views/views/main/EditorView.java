@@ -19,6 +19,7 @@ import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.*;
+import com.vaadin.flow.server.HttpStatusCode;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.server.VaadinSession;
 import com.webide.wide.dao.ProgramInputDao;
@@ -36,7 +37,6 @@ import org.slf4j.LoggerFactory;
 import org.vaadin.olli.FileDownloadWrapper;
 
 import java.io.ByteArrayInputStream;
-import java.nio.channels.Selector;
 import java.util.Map;
 
 
@@ -46,8 +46,6 @@ import java.util.Map;
 public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     //todo: error with stacking error notifications ensure to rectify, also consider using an arrow to open and close the utility window
-
-    //todo:change aceMode based on file extension
 
     AceEditor aceEditor;
     VerticalLayout sideGutter,ioLayout,selectorLayout;
@@ -142,42 +140,39 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         });
 
         utilityButtonLayout.add(executeButton,noteButton,fileButton,buttonDownloadWrapper);
-//        utilityButtonLayout.setJustifyContentMode(JustifyContentMode.CENTER);
 
-        fontSizeSelector.addValueChangeListener(event-> aceEditor.setFontSize(event.getValue()));
+        fontSizeSelector.addValueChangeListener(event->
+                aceEditor.setFontSize(event.getValue()));
 
         selectorLayout.add(aceModeSelector,fontSizeSelector);
-//        selectorLayout.setJustifyContentMode(JustifyContentMode.CENTER);
 
-
-        executeButton.addClickListener(buttonClickEvent -> runCode(aceEditor.getValue(),aceModeSelector.getValue().toString(),outputArea,inputArea));
+        executeButton.addClickListener(buttonClickEvent ->
+                runCode(aceEditor.getValue(),aceModeSelector.getValue().toString(),outputArea,inputArea));
 
         //
         SubMenu subMenu = menuItem.getSubMenu();
 
 
-        subMenu.addItem("Save",menuItemClickEvent -> {
-            if ( !currentFileName.getText().isEmpty() || !currentFilePath.isEmpty()){
-                try {
-                    serverRequestMethods.saveFile(currentFilePath,aceEditor.getValue());
-                    //--launch saved dialogue -- might make dropdown instead
-                }catch (Exception e){
-                    //launch error dialogue
-                }
-            }else{
-                //let user know file is not saved and to try save as
-            }
-        });
+        subMenu.addItem("Save",menuItemClickEvent ->
+                save(currentFileName.getText(),currentFilePath));
+
+
         subMenu.addItem("Save As",onClick -> launchSaveDialogue());
         subMenu.addItem("Open Recent",onClick->{
             try {
                 ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
-                launchRecentFilesDialog(serverRequestMethods.getUserFiles((Long) VaadinSession.getCurrent().getAttribute("ID")));
+                launchRecentFilesDialog(serverRequestMethods.getUserFiles((Long) VaadinSession.getCurrent().getAttribute("ID")),aceEditor);
             }catch (Exception e){
                 logger.error(e.getMessage());
             }
         });
-        subMenu.addItem("New Project");
+
+        subMenu.addItem("New Project",onClick -> {
+            aceEditor.clear();
+            currentFileName.setText("Untitled Document");
+            currentFilePath = "";
+                }
+        );
 
 
 
@@ -191,6 +186,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         sideGutter.add(currentFileName,utilityButtonLayout,selectorLayout,ioLayout);
         sideGutter.setMinWidth(400,Unit.PIXELS);
         sideGutter.setPadding(true);
+
 
         utilityScroller = new Scroller(sideGutter);
         utilityScroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
@@ -206,32 +202,40 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         add(splitLayout);
     }
 
-    //todo: remove text area from method parameters
-    public void runCode(String code,String language,TextArea outputArea,TextArea inputArea){
+    /**
+     * sends code run request
+     * @param code user cade collected from aceEditor
+     * @param language language used by user
+     * @param outputArea code result output area
+     * @param inputArea optional input area
+     * */
+    public void runCode(String code, String language, TextArea outputArea, TextArea inputArea){
         ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
+        ProgramOutputDto programOutputDto;
 
             try {
-                ProgramOutputDto programOutputDto;
                 if (inputArea.getValue().isEmpty()) {
+                    //if code does not require input during execution
                     programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDao(language, code));
                 }else {
-                    //in case of user input append input to run after code is executed
+                    //if code requires input
                     programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDao(language,code,inputArea.getValue()));
                 }
 
                 String output = programOutputDto.getProgramOutput()+"\n"+"Exit Code: "+programOutputDto.getExitCode();
 
+                //edit environmental details based on received error codes
                 if (programOutputDto.getExitCode() == 0){
                     outputArea.getStyle().remove("color");
                     outputArea.setReadOnly(false);
                     outputArea.setValue(output);
                     new CustomNotification("Program has been executed successfully", NotificationVariant.LUMO_SUCCESS).open();
-                }else if(programOutputDto.getExitCode() >= 0 && programOutputDto.getExitCode() != 555){
+                }else if(programOutputDto.getExitCode() >= 0){
                     outputArea.setValue(output);
                     outputArea.setReadOnly(false);
                     outputArea.getStyle().setColor("red");
                     new CustomNotification("Program has produced an error",NotificationVariant.LUMO_ERROR).open();
-                }else {
+                }else if (programOutputDto.getExitCode() != HttpStatusCode.EXPECTATION_FAILED.getCode()){
                     outputArea.setValue(output);
                     outputArea.setReadOnly(false);
                     outputArea.getStyle().setColor("yellow");
@@ -239,10 +243,24 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 }
 
             }catch (Exception e){
+                System.out.println(e.getMessage());
                 new CustomNotification("Error: Connection to the server could not be established", NotificationVariant.LUMO_ERROR).open();
             }
     }
 
+
+    //save content to existing file
+    public void save(String currentFileName,String currentFilePath){
+        if ( !currentFileName.isEmpty() || !currentFilePath.isEmpty()){
+            try {
+                serverRequestMethods.saveFile(currentFilePath,aceEditor.getValue());
+            }catch (Exception e){
+                //todo: create error dialogue
+            }
+        }else{
+            new CustomNotification("you are attempting to save content to a file that doesn't exist",NotificationVariant.LUMO_WARNING);
+        }
+    }
 
     //save name can't be untitled document!!!
     public void launchSaveDialogue(){
@@ -269,28 +287,26 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             }
         });
 
-
         fileNameField.setLabel("File Name");
-
         dialog.setHeader("Save As");
-
         dialog.setConfirmButton(saveButton);
         dialog.setCancelButton(cancelButton);
-
         dialog.add(fileNameField);
 
         if (fileNameField.isEmpty()){
             saveButton.setEnabled(false);
         }
 
-        fileNameField.addValueChangeListener(onChange-> saveButton.setEnabled(!onChange.getValue().isEmpty()));
+        //enable save button only when a file name has been entered
+        fileNameField.addValueChangeListener(onChange->
+                saveButton.setEnabled(!onChange.getValue().isEmpty()));
 
         dialog.open();
     }
 
 
     //dialog for recent files
-    public void launchRecentFilesDialog(Map<String,String> fileList){
+    public void launchRecentFilesDialog(Map<String,String> fileList,AceEditor aceEditor){
         Dialog dialog = new Dialog();
 
         dialog.setHeaderTitle("Recent Files");
@@ -308,6 +324,8 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
         //todo:extract to method
         Button openFileButton = new Button("open");
+
+
         openFileButton.addClickListener(buttonClickEvent -> {
             if (!stringBuilder.isEmpty()) {
                 try {
@@ -316,7 +334,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                     //setting current filepath and name
                     currentFilePath = stringBuilder.toString();
                     currentFileName.setText(stringBuilder.substring(stringBuilder.lastIndexOf("\\")+1));
-                    setAceModeByFileExtension(stringBuilder.substring(stringBuilder.indexOf(".")));
+                    setAceModeByFileExtension(stringBuilder.substring(stringBuilder.indexOf(".")),aceModeSelector);
 
                     dialog.close();
                 }catch (Exception e){
@@ -324,20 +342,16 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 }
             }
         });
-        //todo: listener to open selected file
-        //todo:add file creation time
 
         dialog.getFooter().add(openFileButton);
         dialog.open();
     }
 
-    public void setAceModeByFileExtension(String extension){
+    public void setAceModeByFileExtension(String extension,Select<AceMode> selector){
         extensionMapper = new ExtensionMapper();
-
-        aceModeSelector.setValue(extensionMapper.getAceModeByExtension(extension));
+        selector.setValue(extensionMapper.getAceModeByExtension(extension));
     }
 
-    //todo: method to launch new project
 
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {

@@ -2,6 +2,9 @@ package com.webide.wide.views.custom_components;
 
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+/**
+ * custom implementation of the vaadin notification component
+ * */
 
 public class CustomNotification extends Notification {
 

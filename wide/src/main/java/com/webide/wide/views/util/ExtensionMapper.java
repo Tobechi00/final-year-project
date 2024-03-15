@@ -6,8 +6,8 @@ import java.util.HashMap;
 
 public class ExtensionMapper {
 
-    private HashMap<AceMode,String> aceExtensionMap = new HashMap<>();
-    private HashMap<String,AceMode> extensionAceMap = new HashMap<>();
+    private final HashMap<AceMode,String> aceExtensionMap = new HashMap<>();
+    private final HashMap<String,AceMode> extensionAceMap = new HashMap<>();
 
     public ExtensionMapper(){
         // Mapping Ace modes to file extensions

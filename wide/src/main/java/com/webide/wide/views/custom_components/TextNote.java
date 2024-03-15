@@ -6,6 +6,9 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.data.value.ValueChangeMode;
 
+/**
+ * custom implementation of the vaadin dialogue component
+ */
 
 //custom component for creating text notes.
 public class TextNote extends Dialog {
@@ -41,14 +44,12 @@ public class TextNote extends Dialog {
         textArea.setValueChangeMode(ValueChangeMode.EAGER);
         textArea.setMaxLength(300);
 
-
         textArea.addValueChangeListener(e -> {
                 e.getSource().setHelperText(e.getValue().length() + "/" + 300);
                 if (textArea.getValue().length() == 1){
                     textArea.setValue(textArea.getValue().toUpperCase());
                 }
             });
-
 
         closeButton.setText("close");
         saveButton.setText("save");
@@ -59,7 +60,6 @@ public class TextNote extends Dialog {
         closeButton.addClickListener(event -> {
            this.close();
         });
-
 
         getFooter().add(saveButton,closeButton);
         add(textArea);

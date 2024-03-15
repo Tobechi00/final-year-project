@@ -5,7 +5,9 @@ import de.f0rce.ace.enums.AceMode;
 
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * contains custom selector list implementations for languages and sizes
+ * */
 public class SelectorLists {
 
     public static Select<AceMode> getLanguageSelector(){
