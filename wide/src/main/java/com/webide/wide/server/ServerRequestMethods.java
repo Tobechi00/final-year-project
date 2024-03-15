@@ -23,9 +23,8 @@ import java.util.Map;
 
 public class ServerRequestMethods {
 
-//    Logger logger = LoggerFactory.getLogger(ServerRequestMethods.class);
-
     String apiURL = "http://localhost:8080/w-ide/api";
+
 
     //sends a request to run code
     public ProgramOutputDto sendCodeRunRequest(ProgramInputDao programInputDao) throws HttpClientErrorException {
@@ -48,16 +47,13 @@ public class ServerRequestMethods {
     }
 
     //main login method
-    public void sendLoginRequestAndReceivePayload(LoginDao loginDao) throws HttpClientErrorException {
+    public void sendLoginRequest(LoginDao loginDao) throws HttpClientErrorException {
+            String url = apiURL+"/login";
 
             RestTemplate restTemplate = new RestTemplate();
 
-            String url = apiURL+"/login";
-
             HttpEntity<LoginDao> requestEntity = new HttpEntity<>(loginDao);
-
             ResponseEntity<UserPayloadDao> payloadResponse = restTemplate.postForEntity(url,requestEntity, UserPayloadDao.class);
-
             UserPayloadDao userPayloadDao = payloadResponse.getBody();
 
             //binding to session
@@ -110,13 +106,13 @@ public class ServerRequestMethods {
         String url =  apiURL+"/files/getAllFiles/"+userId;
 
         setInterceptors(restTemplate);
-        ResponseEntity<List<String>> responseEntity = restTemplate.exchange(url, HttpMethod.GET, null, new ParameterizedTypeReference<List<String>>() {});
+        ResponseEntity<List<String>> responseEntity = restTemplate.exchange(url,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<List<String>>() {});
 
         List<String> fileNameList;
-        //still need to preserve full file paths for requests
-
         Map<String,String> filePathMap = new HashMap<>();
-
         fileNameList = responseEntity.getBody();
 
         assert fileNameList != null;
@@ -140,8 +136,8 @@ public class ServerRequestMethods {
 
     //adds token to header
     public void setInterceptors(RestTemplate restTemplate){
-        List<ClientHttpRequestInterceptor> interceptors
-                = restTemplate.getInterceptors();
+        List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
+
         if (CollectionUtils.isEmpty(interceptors)) {
             interceptors = new ArrayList<>();
         }
@@ -158,5 +154,4 @@ public class ServerRequestMethods {
         return path;
     }
 
-    //todo: get file by name
 }

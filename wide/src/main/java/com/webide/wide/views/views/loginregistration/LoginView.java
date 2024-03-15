@@ -49,7 +49,7 @@ public class LoginView extends VerticalLayout {
         loginButton.addClickListener(login->{
             if (!usernameField.isEmpty() || !passwordField.isEmpty()){
                 try {
-                    serverRequestMethods.sendLoginRequestAndReceivePayload(
+                    serverRequestMethods.sendLoginRequest(
 
                             new LoginDao(usernameField.getValue(),passwordField.getValue()));
                     UI.getCurrent().navigate(EditorView.class);
