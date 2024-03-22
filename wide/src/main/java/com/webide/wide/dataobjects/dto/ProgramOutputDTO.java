@@ -1,6 +1,6 @@
-package com.webide.wide.dao;
+package com.webide.wide.dataobjects.dto;
 
-public class ProgramOutputDto {
+public class ProgramOutputDTO {
 
     private String programOutput;
 

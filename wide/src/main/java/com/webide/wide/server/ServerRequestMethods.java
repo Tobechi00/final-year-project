@@ -1,15 +1,16 @@
 package com.webide.wide.server;
 
 import com.vaadin.flow.server.VaadinSession;
-import com.webide.wide.dao.LoginDao;
-import com.webide.wide.dao.ProgramInputDao;
-import com.webide.wide.dao.ProgramOutputDto;
-import com.webide.wide.dao.UserPayloadDao;
+import com.webide.wide.dataobjects.dao.LoginDAO;
+import com.webide.wide.dataobjects.dao.ProgramInputDAO;
+import com.webide.wide.dataobjects.dto.ProgramOutputDTO;
+import com.webide.wide.dataobjects.dao.UserPayloadDAO;
+import com.webide.wide.dataobjects.dto.RegistrationDTO;
+import com.webide.wide.dataobjects.dto.SaveAsFileDTO;
+import com.webide.wide.dataobjects.dto.SaveFileDTO;
 import com.webide.wide.interceptorconfig.RestTemplateHeaderModifierInterceptor;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.HttpClientErrorException;
@@ -27,8 +28,8 @@ public class ServerRequestMethods {
 
 
     //sends a request to run code
-    public ProgramOutputDto sendCodeRunRequest(ProgramInputDao programInputDao) throws HttpClientErrorException {
-        ProgramOutputDto programOutputDto;
+    public ProgramOutputDTO sendCodeRunRequest(ProgramInputDAO programInputDao) throws HttpClientErrorException {
+        ProgramOutputDTO programOutputDto;
         try {
             RestTemplate restTemplate = new RestTemplate();
 
@@ -36,7 +37,7 @@ public class ServerRequestMethods {
             setInterceptors(restTemplate);
 
             String url = apiURL+"/python/submit";
-            ResponseEntity<ProgramOutputDto> responseEntity = restTemplate.postForEntity(url,programInputDao, ProgramOutputDto.class);
+            ResponseEntity<ProgramOutputDTO> responseEntity = restTemplate.postForEntity(url,programInputDao, ProgramOutputDTO.class);
 
             programOutputDto = responseEntity.getBody();
 
@@ -47,14 +48,14 @@ public class ServerRequestMethods {
     }
 
     //main login method
-    public void sendLoginRequest(LoginDao loginDao) throws HttpClientErrorException {
+    public void sendLoginRequest(LoginDAO loginDao) throws HttpClientErrorException {
             String url = apiURL+"/login";
 
             RestTemplate restTemplate = new RestTemplate();
 
-            HttpEntity<LoginDao> requestEntity = new HttpEntity<>(loginDao);
-            ResponseEntity<UserPayloadDao> payloadResponse = restTemplate.postForEntity(url,requestEntity, UserPayloadDao.class);
-            UserPayloadDao userPayloadDao = payloadResponse.getBody();
+            HttpEntity<LoginDAO> requestEntity = new HttpEntity<>(loginDao);
+            ResponseEntity<UserPayloadDAO> payloadResponse = restTemplate.postForEntity(url,requestEntity, UserPayloadDAO.class);
+            UserPayloadDAO userPayloadDao = payloadResponse.getBody();
 
             //binding to session
         if (userPayloadDao != null) {
@@ -64,7 +65,17 @@ public class ServerRequestMethods {
             VaadinSession.getCurrent().setAttribute("LASTNAME", userPayloadDao.getLastName());
             VaadinSession.getCurrent().setAttribute("ID", userPayloadDao.getId());
         }
+    }
 
+    //registration method
+    public HttpStatusCode sendRegistrationRequest(RegistrationDTO registrationDTO){
+        String url = apiURL+"/register";
+        RestTemplate restTemplate = new RestTemplate();
+
+        HttpEntity<RegistrationDTO> requestEntity = new HttpEntity<>(registrationDTO);
+        ResponseEntity<String> responseEntity = restTemplate.postForEntity(url,requestEntity,String.class);
+
+        return responseEntity.getStatusCode();
     }
 
     //save
@@ -80,7 +91,6 @@ public class ServerRequestMethods {
         ResponseEntity<String> response = restTemplate.postForEntity(url,httpEntity,String.class);
     }
     //custom file dto
-    record SaveFileDTO(String fileName,String fileContent){}
 
 
     //save as
@@ -95,11 +105,9 @@ public class ServerRequestMethods {
         ResponseEntity<String> response = restTemplate.postForEntity(url,httpEntity,String.class);
     }
 
-    record SaveAsFileDTO(String oldFilePath,String newFilePath,String fileContent){}
 
 
     //get a list of userfiles
-    //request entity is null because get request
     //ParameterizedTypeReference<List<String>> tells RestTemplate to expect a list of strings in the response body.
     public Map<String,String> getUserFiles(Long userId){
         RestTemplate restTemplate = new RestTemplate();
@@ -141,7 +149,6 @@ public class ServerRequestMethods {
         if (CollectionUtils.isEmpty(interceptors)) {
             interceptors = new ArrayList<>();
         }
-
         interceptors.add(new RestTemplateHeaderModifierInterceptor());
         restTemplate.setInterceptors(interceptors);
     }
@@ -149,7 +156,6 @@ public class ServerRequestMethods {
     public String extractFileName(String path){
         int beginning = path.lastIndexOf("\\")+1;
         int end = path.length();
-
         path = path.substring(beginning,end);
         return path;
     }

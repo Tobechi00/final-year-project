@@ -1,8 +1,8 @@
-package com.webide.wide.dao;
+package com.webide.wide.dataobjects.dao;
 
 import java.util.Optional;
 
-public class ProgramInputDao {
+public class ProgramInputDAO {
     private String programmingLanguage;
 
     private String program;
@@ -10,13 +10,13 @@ public class ProgramInputDao {
     private Optional<String> userInput;
 
 
-    public ProgramInputDao(String programmingLanguage, String program,String userInput){
+    public ProgramInputDAO(String programmingLanguage, String program, String userInput){
         this.programmingLanguage = programmingLanguage;
         this.program = program;
         this.userInput = Optional.of(userInput);
     }
 
-    public ProgramInputDao(String programmingLanguage, String program){
+    public ProgramInputDAO(String programmingLanguage, String program){
         this.programmingLanguage = programmingLanguage;
         this.program = program;
     }

@@ -1,11 +1,11 @@
-package com.webide.wide.dao;
+package com.webide.wide.dataobjects.dao;
 
-public class LoginDao {
+public class LoginDAO {
     private String username;
     private String password;
 
-    public LoginDao(){};
-    public LoginDao(String username, String password){
+    public LoginDAO(){};
+    public LoginDAO(String username, String password){
         this.username = username;
         this.password = password;
     }
