@@ -1,4 +1,4 @@
-package com.webide.wide.views.custom_components;
+package com.webide.wide.views.customcomponents;
 
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;

@@ -22,12 +22,12 @@ import com.vaadin.flow.router.*;
 import com.vaadin.flow.server.HttpStatusCode;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.server.VaadinSession;
-import com.webide.wide.dao.ProgramInputDao;
-import com.webide.wide.dao.ProgramOutputDto;
+import com.webide.wide.dataobjects.dao.ProgramInputDAO;
+import com.webide.wide.dataobjects.dto.ProgramOutputDTO;
 import com.webide.wide.server.ServerRequestMethods;
-import com.webide.wide.views.custom_components.CustomNotification;
-import com.webide.wide.views.custom_components.SelectorLists;
-import com.webide.wide.views.custom_components.TextNote;
+import com.webide.wide.views.customcomponents.CustomNotification;
+import com.webide.wide.views.customcomponents.SelectorLists;
+import com.webide.wide.views.customcomponents.TextNote;
 import com.webide.wide.views.util.ExtensionMapper;
 import com.webide.wide.views.views.loginregistration.LoginView;
 import de.f0rce.ace.AceEditor;
@@ -211,15 +211,15 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
      * */
     public void runCode(String code, String language, TextArea outputArea, TextArea inputArea){
         ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
-        ProgramOutputDto programOutputDto;
+        ProgramOutputDTO programOutputDto;
 
             try {
                 if (inputArea.getValue().isEmpty()) {
                     //if code does not require input during execution
-                    programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDao(language, code));
+                    programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language, code));
                 }else {
                     //if code requires input
-                    programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDao(language,code,inputArea.getValue()));
+                    programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language,code,inputArea.getValue()));
                 }
 
                 String output = programOutputDto.getProgramOutput()+"\n"+"Exit Code: "+programOutputDto.getExitCode();

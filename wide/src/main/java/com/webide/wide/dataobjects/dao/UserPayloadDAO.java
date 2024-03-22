@@ -1,6 +1,6 @@
-package com.webide.wide.dao;
+package com.webide.wide.dataobjects.dao;
 
-public class UserPayloadDao {
+public class UserPayloadDAO {
 
     private String username;
     private String firstName;
@@ -8,9 +8,9 @@ public class UserPayloadDao {
     private Long id;
     private String token;
 
-    public UserPayloadDao(){}
+    public UserPayloadDAO(){}
 
-    public UserPayloadDao(String username, String firstName, String lastName, Long id, String token) {
+    public UserPayloadDAO(String username, String firstName, String lastName, Long id, String token) {
         this.username = username;
         this.firstName = firstName;
         this.lastName = lastName;
