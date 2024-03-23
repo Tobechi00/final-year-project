@@ -46,7 +46,7 @@ public class LoginView extends VerticalLayout {
 
                     UI.getCurrent().navigate(EditorView.class);
                 }catch (Exception e){
-
+                    logger.error(e.getMessage());
                     loginForm.setError(true);
                 }
             }
