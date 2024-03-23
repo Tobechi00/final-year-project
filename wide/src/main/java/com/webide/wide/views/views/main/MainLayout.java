@@ -3,6 +3,7 @@ package com.webide.wide.views.views.main;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
@@ -18,7 +19,7 @@ public class MainLayout extends AppLayout implements AppShellConfigurator {
     Avatar avatar;
     Paragraph spacerOne;
     Paragraph spacerTwo;
-    H4 header;
+    H3 header;
 
 
     HorizontalLayout brandTitleLayout, avatarLayout,parentLayout;
@@ -26,17 +27,16 @@ public class MainLayout extends AppLayout implements AppShellConfigurator {
 
 
     public MainLayout(){
-        //todo: add functionality
         avatarLayout = new HorizontalLayout();
-        header = new H4("Web_Weaver");
-        //
+        header = new H3("Web_Weaver");
+
         header.getStyle().setPadding("5").setColor("gray");
 
         String firstName = (String) VaadinSession.getCurrent().getAttribute("FIRSTNAME");
         String lastName = (String) VaadinSession.getCurrent().getAttribute("LASTNAME");
 
         avatar = new Avatar(firstName+" "+lastName);
-//        avatar.getStyle().setColor("white");
+
         avatar.getStyle().setPadding("5");
 
         spacerOne = new Paragraph("  ");

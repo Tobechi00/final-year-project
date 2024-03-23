@@ -10,6 +10,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.listbox.ListBox;
 import com.vaadin.flow.component.menubar.MenuBar;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller;
@@ -110,7 +111,12 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
 
         //wrapping button with a download wrapper
-        buttonDownloadWrapper = new FileDownloadWrapper(new StreamResource(currentFileName.getText()+extensionMapper.getExtensionByAceMode(aceEditor.getMode()), () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())));
+        buttonDownloadWrapper = new FileDownloadWrapper(
+                new StreamResource(
+                        currentFileName.getText()+extensionMapper.getExtensionByAceMode(
+                                aceEditor.getMode()),
+                        () -> new ByteArrayInputStream(aceEditor.getValue().getBytes()))
+        );
         buttonDownloadWrapper.wrapComponent(downloadButton);
 
 
@@ -195,8 +201,8 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         splitLayout = new SplitLayout(aceEditor, utilityScroller);
         splitLayout.setOrientation(SplitLayout.Orientation.HORIZONTAL);
         splitLayout.setSizeFull();
-        //sets position 75:25
-        splitLayout.setSplitterPosition(75);
+        //sets position 70:30
+        splitLayout.setSplitterPosition(70);
 
 
         add(splitLayout);
@@ -243,7 +249,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 }
 
             }catch (Exception e){
-                System.out.println(e.getMessage());
+                logger.error(e.getMessage());
                 new CustomNotification("Error: Connection to the server could not be established", NotificationVariant.LUMO_ERROR).open();
             }
     }
@@ -251,14 +257,17 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     //save content to existing file
     public void save(String currentFileName,String currentFilePath){
-        if ( !currentFileName.isEmpty() || !currentFilePath.isEmpty()){
+        if ( !currentFileName.isEmpty() && !currentFileName.equals("Untitled Document") || !currentFilePath.isEmpty()){
             try {
                 serverRequestMethods.saveFile(currentFilePath,aceEditor.getValue());
+                launchSaveSuccessMessage();
             }catch (Exception e){
-                //todo: create error dialogue
+                launchSaveErrorNotification();
             }
         }else{
-            new CustomNotification("you are attempting to save content to a file that doesn't exist",NotificationVariant.LUMO_WARNING);
+            new CustomNotification(
+                    "you are attempting to save content to a file that doesn't exist",
+                    NotificationVariant.LUMO_WARNING).open();
         }
     }
 
@@ -267,24 +276,11 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         ConfirmDialog dialog = new ConfirmDialog();
         TextField fileNameField  = new TextField();
 
-        ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
-
         Button saveButton = new Button("Save");
         Button cancelButton = new Button("Cancel");
 
         saveButton.addClickListener(buttonClickEvent -> {
-            try {
-                ExtensionMapper extensionMapper = new ExtensionMapper();
-                String basePath = "C:\\Users\\tobec\\ServerData\\user-files\\";
-                String completePath = basePath+fileNameField.getValue()+extensionMapper.getExtensionByAceMode(aceEditor.getMode());
-
-                serverRequestMethods.saveFileAs(currentFilePath,completePath,aceEditor.getValue());
-
-                currentFilePath = basePath+fileNameField.getValue();
-                currentFileName.setText(fileNameField.getValue()+extensionMapper.getExtensionByAceMode(aceEditor.getMode()));
-            }catch (Exception e){
-                logger.error(e.getMessage());
-            }
+            saveAs(fileNameField);
         });
 
         fileNameField.setLabel("File Name");
@@ -302,6 +298,43 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 saveButton.setEnabled(!onChange.getValue().isEmpty()));
 
         dialog.open();
+    }
+
+    public void saveAs(TextField fileNameField){
+        try {
+            ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
+            ExtensionMapper extensionMapper = new ExtensionMapper();
+
+            String basePath = "C:\\Users\\tobec\\ServerData\\user-files\\";
+            String completePath = basePath+fileNameField.getValue()+extensionMapper.getExtensionByAceMode(aceEditor.getMode());
+
+            serverRequestMethods.saveFileAs(currentFilePath,completePath,aceEditor.getValue());
+            currentFilePath = basePath+fileNameField.getValue();
+            currentFileName.setText(fileNameField.getValue()+extensionMapper.getExtensionByAceMode(aceEditor.getMode()));
+
+            launchSaveSuccessMessage();
+        }catch (Exception e){
+            launchSaveErrorNotification();
+            logger.error(e.getMessage());
+        }
+    }
+
+    public void launchSaveErrorNotification(){
+        new CustomNotification(
+                "An Error Occurred While Trying To Save Your File",
+                NotificationVariant.LUMO_ERROR,
+                3000,
+                Notification.Position.TOP_CENTER)
+                .open();
+    }
+
+    public void launchSaveSuccessMessage(){
+        new CustomNotification(
+                "File Saved Successfully",
+                NotificationVariant.LUMO_SUCCESS,
+                3000,
+                Notification.Position.TOP_CENTER)
+                .open();
     }
 
 
@@ -338,7 +371,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
                     dialog.close();
                 }catch (Exception e){
-                    //log error
+                    logger.error(e.getMessage());
                 }
             }
         });

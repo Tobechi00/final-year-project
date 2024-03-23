@@ -9,6 +9,8 @@ import com.vaadin.flow.router.RouterLink;
 import com.webide.wide.dataobjects.dao.LoginDAO;
 import com.webide.wide.server.ServerRequestMethods;
 import com.webide.wide.views.views.main.EditorView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 @PageTitle("login")
@@ -18,6 +20,7 @@ public class LoginView extends VerticalLayout {
     LoginForm loginForm;
     RouterLink registerLink;
     ServerRequestMethods serverRequestMethods;
+    Logger logger;
 
     public LoginView(){
         setAlignItems(Alignment.CENTER);
@@ -25,7 +28,8 @@ public class LoginView extends VerticalLayout {
         setSizeFull();
 
         serverRequestMethods = new ServerRequestMethods();
-        registerLink = new RouterLink("Register",RegistrationView.class);
+        logger = LoggerFactory.getLogger(LoginView.class);
+        registerLink = new RouterLink("Create an Account",RegistrationView.class);
 
         loginForm = new LoginForm();
         loginForm.setForgotPasswordButtonVisible(false);
@@ -42,7 +46,7 @@ public class LoginView extends VerticalLayout {
 
                     UI.getCurrent().navigate(EditorView.class);
                 }catch (Exception e){
-                    //log err
+
                     loginForm.setError(true);
                 }
             }
