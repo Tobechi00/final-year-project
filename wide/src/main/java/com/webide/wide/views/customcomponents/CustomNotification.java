@@ -19,7 +19,6 @@ public class CustomNotification extends Notification {
         setText(message);
         addThemeVariants(warningLevel);
         setPosition(position);
-
         setDuration(duration);
     }
 }

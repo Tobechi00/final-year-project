@@ -5,6 +5,8 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
@@ -14,6 +16,9 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.webide.wide.dataobjects.dto.RegistrationDTO;
 import com.webide.wide.server.ServerRequestMethods;
+import com.webide.wide.views.customcomponents.CustomNotification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
 
 @Route(value = "/register")
@@ -28,6 +33,7 @@ public class RegistrationView extends VerticalLayout {
     FormLayout registrationFormLayout;
     HorizontalLayout formWrapper;
     Button registerButton;
+    Logger logger;
 
     public RegistrationView(){
         setAlignItems(Alignment.CENTER);
@@ -35,12 +41,13 @@ public class RegistrationView extends VerticalLayout {
         setSizeFull();
         setPadding(true);
 
-        title = new H2("Register");
+        title = new H2("Create an Account");
         firstnameField = new TextField("First name");
         lastnameField = new TextField("Last name");
         emailField = new EmailField("Email");
         passwordField = new PasswordField("Password");
         confirmPasswordField = new PasswordField("Confirm password");
+        logger = LoggerFactory.getLogger(RegistrationView.class);
 
 
         firstnameField.setRequired(true);
@@ -122,8 +129,22 @@ public class RegistrationView extends VerticalLayout {
                 }
 
             }catch (Exception e){
-                System.out.println(e.getMessage());
+                new CustomNotification(
+                        "An Error Occurred While Trying to Create Your Account",
+                        NotificationVariant.LUMO_ERROR,
+                        3000,
+                        Notification.Position.TOP_CENTER)
+                        .open();
+
+                logger.error(e.getMessage());
             }
+        }else{
+            new CustomNotification(
+                    "Please Ensure All Fields Are Filled Correctly",
+                    NotificationVariant.LUMO_WARNING,
+                    3000,
+                    Notification.Position.TOP_CENTER)
+                    .open();
         }
     }
 
