@@ -2,12 +2,15 @@ package com.webide.wide.views.views.main;
 
 
 import com.vaadin.flow.component.Unit;
+import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.contextmenu.MenuItem;
 import com.vaadin.flow.component.contextmenu.SubMenu;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H4;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.listbox.ListBox;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.notification.Notification;
@@ -23,6 +26,7 @@ import com.vaadin.flow.router.*;
 import com.vaadin.flow.server.HttpStatusCode;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.server.VaadinSession;
+import com.vaadin.flow.theme.lumo.LumoIcon;
 import com.webide.wide.dataobjects.dao.ProgramInputDAO;
 import com.webide.wide.dataobjects.dto.ProgramOutputDTO;
 import com.webide.wide.server.ServerRequestMethods;
@@ -33,6 +37,7 @@ import com.webide.wide.views.util.ExtensionMapper;
 import com.webide.wide.views.views.loginregistration.LoginView;
 import de.f0rce.ace.AceEditor;
 import de.f0rce.ace.enums.AceMode;
+import de.f0rce.ace.enums.AceTheme;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vaadin.olli.FileDownloadWrapper;
@@ -41,28 +46,31 @@ import java.io.ByteArrayInputStream;
 import java.util.Map;
 
 
-@Route(value = "",layout = MainLayout.class)
+@Route(value = "")
 @PreserveOnRefresh
 @PageTitle("W-ide")
 public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     //todo: error with stacking error notifications ensure to rectify, also consider using an arrow to open and close the utility window
 
-    AceEditor aceEditor;
-    VerticalLayout sideGutter,ioLayout,selectorLayout;
+    AceEditor aceEditor, outputArea;
+    MenuItem menuItem;
+    SubMenu subMenu;
+    Avatar avatar;
+    VerticalLayout bottomGutter,ioLayout,selectorLayout;
+    HorizontalLayout navLayout,navStart,navCenter,navEnd,utilityButtonLayout;
+    Icon runIcon,downloadIcon,noteIcon,settingIcon,fileIcon,minimizeIcon;
     Scroller utilityScroller;
     FileDownloadWrapper buttonDownloadWrapper;
-    HorizontalLayout utilityButtonLayout;
-    Button executeButton,downloadButton,noteButton;
+    Button minimizeButton,executeButton,downloadButton,noteButton,settingsButton;
     MenuBar fileButton;
     Select<AceMode> aceModeSelector;
     Select<Integer> fontSizeSelector;
     ExtensionMapper extensionMapper;
     TextArea inputArea;
     H4 currentFileName;
-    TextArea outputArea;
     TextNote textNote;
-    String currentFilePath;
+    String currentFilePath,firstName,lastName;
     SplitLayout splitLayout;
     ServerRequestMethods serverRequestMethods;
     Logger logger = LoggerFactory.getLogger(EditorView.class);
@@ -77,38 +85,60 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         aceEditor.setAutoComplete(true);
         aceEditor.setLiveAutocompletion(true);
         aceEditor.setMode(AceMode.text);
-
+        aceEditor.setDisplayIndentGuides(true);
+        aceEditor.setTheme(AceTheme.nord_dark);
+        aceEditor.setShowInvisibles(true);
 
         //layouts
-        sideGutter = new VerticalLayout();
-        utilityButtonLayout = new HorizontalLayout();
+        bottomGutter = new VerticalLayout();
         selectorLayout = new VerticalLayout();
         ioLayout = new VerticalLayout();
+
         utilityScroller = new Scroller();
 
-        //text areas
-        inputArea = new TextArea();
-        outputArea = new TextArea();
+        utilityButtonLayout = new HorizontalLayout();
+        navLayout = new HorizontalLayout();
+        navStart = new HorizontalLayout();
+        navCenter = new HorizontalLayout();
+        navEnd = new HorizontalLayout();
 
-        //
+        inputArea = new TextArea();
+
         serverRequestMethods = new ServerRequestMethods();
 
-        //
+
         currentFileName = new H4("Untitled Document");
+        //maps to the full path of the currently open file
         currentFilePath = "";
 
         textNote = new TextNote();
 
+        //icons runIcon,downloadIcon,noteIcon,SettingIcon,FileIcon;
+        runIcon = LumoIcon.PLAY.create();
+        downloadIcon = LumoIcon.DOWNLOAD.create();
+        noteIcon = VaadinIcon.NOTEBOOK.create();
+        settingIcon = LumoIcon.COG.create();
+        fileIcon = VaadinIcon.FOLDER.create();
+        minimizeIcon = LumoIcon.MINUS.create();
+
+        runIcon.setColor("green");
+        downloadIcon.setColor("white");
+        noteIcon.setColor("white");
+        settingIcon.setColor("white");
+        fileIcon.setColor("white");
+        minimizeIcon.setColor("white");
+
 
         //buttons
-        executeButton = new Button("Run");
-        downloadButton = new Button("Download");
-        noteButton = new Button("Note",buttonClickEvent -> textNote.open());
+        executeButton = new Button(runIcon);
+        settingsButton = new Button(settingIcon);
+        downloadButton = new Button(downloadIcon);
+        noteButton = new Button(noteIcon,buttonClickEvent -> textNote.open());
         fileButton = new MenuBar();
-        MenuItem menuItem = fileButton.addItem("file");
+        minimizeButton = new Button(minimizeIcon);
+        menuItem = fileButton.addItem(fileIcon);
 
         extensionMapper = new ExtensionMapper();
-
 
         //wrapping button with a download wrapper
         buttonDownloadWrapper = new FileDownloadWrapper(
@@ -119,30 +149,30 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         );
         buttonDownloadWrapper.wrapComponent(downloadButton);
 
-
-        inputArea.setLabel("Input");
+        inputArea.setPlaceholder("Input");
         inputArea.setMaxHeight(100,Unit.PIXELS);
-        inputArea.setMinHeight(100,Unit.PIXELS);
         inputArea.setSizeFull();
-
-        outputArea.setLabel("Output");
-        outputArea.setMinHeight(270, Unit.PIXELS);
-        outputArea.setMaxHeight(270,Unit.PIXELS);
-        outputArea.setSizeFull();
-        outputArea.setReadOnly(true);
-
 
         aceModeSelector = SelectorLists.getLanguageSelector();
         fontSizeSelector = SelectorLists.getSizeSelector();
 
         aceModeSelector.addValueChangeListener(event ->{
-            aceEditor.setMode(event.getValue());
-            utilityButtonLayout.remove(buttonDownloadWrapper);
+            try {
+                aceEditor.setMode(event.getValue());
+                //button needs to be removed before being added again
+                utilityButtonLayout.remove(buttonDownloadWrapper);
 
-            buttonDownloadWrapper = new FileDownloadWrapper(new StreamResource(currentFileName.getText()+extensionMapper.getExtensionByAceMode(aceEditor.getMode()), () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())));
-            buttonDownloadWrapper.wrapComponent(downloadButton);
+                buttonDownloadWrapper = new FileDownloadWrapper(
+                        new StreamResource(
+                                currentFileName.getText()+extensionMapper.getExtensionByAceMode(aceEditor.getMode()),
+                                () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())
+                        ));
+                buttonDownloadWrapper.wrapComponent(downloadButton);
 
-            utilityButtonLayout.add(buttonDownloadWrapper);
+                utilityButtonLayout.add(buttonDownloadWrapper);
+            }catch (Exception e){
+                logger.warn(e.getMessage());
+            }
         });
 
         utilityButtonLayout.add(executeButton,noteButton,fileButton,buttonDownloadWrapper);
@@ -153,10 +183,11 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         selectorLayout.add(aceModeSelector,fontSizeSelector);
 
         executeButton.addClickListener(buttonClickEvent ->
-                runCode(aceEditor.getValue(),aceModeSelector.getValue().toString(),outputArea,inputArea));
+                runCode(aceEditor.getValue(),aceModeSelector.getValue().toString(), outputArea,inputArea));
 
+        settingsButton.addClickListener(buttonClickEvent -> launchSettingsDialog(selectorLayout));
         //
-        SubMenu subMenu = menuItem.getSubMenu();
+        subMenu = menuItem.getSubMenu();
 
 
         subMenu.addItem("Save",menuItemClickEvent ->
@@ -177,35 +208,68 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             aceEditor.clear();
             currentFileName.setText("Untitled Document");
             currentFilePath = "";
-                }
-        );
+                });
+
+        outputArea = new AceEditor();
+        outputArea.setShowGutter(false);
+        outputArea.setTheme(aceEditor.getTheme());
+        outputArea.setHighlightActiveLine(false);
+        outputArea.setReadOnly(true);
+        outputArea.setMode(AceMode.text);
+        outputArea.setValue("Output");
+
+        ioLayout.add(inputArea, outputArea);
+        ioLayout.setJustifyContentMode(JustifyContentMode.START);
+        ioLayout.setAlignItems(Alignment.START);
 
 
+        bottomGutter.setAlignItems(Alignment.START);
+        bottomGutter.setJustifyContentMode(JustifyContentMode.START);
+        bottomGutter.add(minimizeButton,ioLayout);
+
+        bottomGutter.setHorizontalComponentAlignment(Alignment.END,minimizeButton);
 
 
-        ioLayout.add(inputArea,outputArea);
-        ioLayout.setJustifyContentMode(JustifyContentMode.CENTER);
-
-        //side gutter
-        sideGutter.setAlignItems(Alignment.CENTER);
-        sideGutter.setJustifyContentMode(JustifyContentMode.CENTER);
-        sideGutter.add(currentFileName,utilityButtonLayout,selectorLayout,ioLayout);
-        sideGutter.setMinWidth(400,Unit.PIXELS);
-        sideGutter.setPadding(true);
-
-
-        utilityScroller = new Scroller(sideGutter);
+        utilityScroller = new Scroller(bottomGutter);
         utilityScroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
-        utilityScroller.setMaxWidth(800,Unit.PIXELS);
+
+        utilityScroller.setMaxHeight(400,Unit.PIXELS);
 
         splitLayout = new SplitLayout(aceEditor, utilityScroller);
-        splitLayout.setOrientation(SplitLayout.Orientation.HORIZONTAL);
+        splitLayout.setOrientation(SplitLayout.Orientation.VERTICAL);
         splitLayout.setSizeFull();
         //sets position 70:30
         splitLayout.setSplitterPosition(70);
+        minimizeButton.addClickListener(buttonClickEvent -> splitLayout.setSplitterPosition(100));
 
+        navLayout.setWidthFull();
 
-        add(splitLayout);
+        navStart.add(fileButton,currentFileName);
+        navStart.setWidthFull();
+        navStart.setJustifyContentMode(JustifyContentMode.START);
+        navStart.setAlignSelf(Alignment.START);
+        navStart.setVerticalComponentAlignment(Alignment.CENTER,currentFileName);
+
+        navCenter.add(executeButton,settingsButton,noteButton,buttonDownloadWrapper);
+        navCenter.setWidthFull();
+        navCenter.setJustifyContentMode(JustifyContentMode.CENTER);
+        navCenter.setAlignSelf(Alignment.CENTER);
+
+        firstName = (String) VaadinSession.getCurrent().getAttribute("FIRSTNAME");
+        lastName = (String) VaadinSession.getCurrent().getAttribute("LASTNAME");
+
+        avatar = new Avatar(firstName+" "+lastName);
+        avatar.getStyle().setColor("white");
+
+        navEnd.add(avatar);
+        navEnd.setWidthFull();
+        navEnd.setJustifyContentMode(JustifyContentMode.END);
+        navEnd.setAlignSelf(Alignment.END);
+        navEnd.setVerticalComponentAlignment(Alignment.CENTER,avatar);
+
+        navLayout.setVerticalComponentAlignment(Alignment.CENTER,navStart);
+        navLayout.add(navStart,navCenter,navEnd);
+        add(navLayout,splitLayout);
     }
 
     /**
@@ -215,7 +279,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
      * @param outputArea code result output area
      * @param inputArea optional input area
      * */
-    public void runCode(String code, String language, TextArea outputArea, TextArea inputArea){
+    public void runCode(String code, String language, AceEditor outputArea, TextArea inputArea){
         ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
         ProgramOutputDTO programOutputDto;
 
@@ -233,17 +297,14 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 //edit environmental details based on received error codes
                 if (programOutputDto.getExitCode() == 0){
                     outputArea.getStyle().remove("color");
-                    outputArea.setReadOnly(false);
                     outputArea.setValue(output);
                     new CustomNotification("Program has been executed successfully", NotificationVariant.LUMO_SUCCESS).open();
                 }else if(programOutputDto.getExitCode() >= 0){
                     outputArea.setValue(output);
-                    outputArea.setReadOnly(false);
                     outputArea.getStyle().setColor("red");
                     new CustomNotification("Program has produced an error",NotificationVariant.LUMO_ERROR).open();
                 }else if (programOutputDto.getExitCode() != HttpStatusCode.EXPECTATION_FAILED.getCode()){
                     outputArea.setValue(output);
-                    outputArea.setReadOnly(false);
                     outputArea.getStyle().setColor("yellow");
                     new CustomNotification("Program took too long to execute",NotificationVariant.LUMO_WARNING).open();
                 }
@@ -256,7 +317,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
 
     //save content to existing file
-    public void save(String currentFileName,String currentFilePath){
+    private void save(String currentFileName,String currentFilePath){
         if ( !currentFileName.isEmpty() && !currentFileName.equals("Untitled Document") || !currentFilePath.isEmpty()){
             try {
                 serverRequestMethods.saveFile(currentFilePath,aceEditor.getValue());
@@ -272,7 +333,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     }
 
     //save name can't be untitled document!!!
-    public void launchSaveDialogue(){
+    private void launchSaveDialogue(){
         ConfirmDialog dialog = new ConfirmDialog();
         TextField fileNameField  = new TextField();
 
@@ -300,7 +361,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         dialog.open();
     }
 
-    public void saveAs(TextField fileNameField){
+    private void saveAs(TextField fileNameField){
         try {
             ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
             ExtensionMapper extensionMapper = new ExtensionMapper();
@@ -319,7 +380,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         }
     }
 
-    public void launchSaveErrorNotification(){
+    private void launchSaveErrorNotification(){
         new CustomNotification(
                 "An Error Occurred While Trying To Save Your File",
                 NotificationVariant.LUMO_ERROR,
@@ -328,7 +389,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 .open();
     }
 
-    public void launchSaveSuccessMessage(){
+    private void launchSaveSuccessMessage(){
         new CustomNotification(
                 "File Saved Successfully",
                 NotificationVariant.LUMO_SUCCESS,
@@ -339,7 +400,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
 
     //dialog for recent files
-    public void launchRecentFilesDialog(Map<String,String> fileList,AceEditor aceEditor){
+    private void launchRecentFilesDialog(Map<String,String> fileList,AceEditor aceEditor){
         Dialog dialog = new Dialog();
 
         dialog.setHeaderTitle("Recent Files");
@@ -380,9 +441,16 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         dialog.open();
     }
 
-    public void setAceModeByFileExtension(String extension,Select<AceMode> selector){
+    private void setAceModeByFileExtension(String extension,Select<AceMode> selector){
         extensionMapper = new ExtensionMapper();
         selector.setValue(extensionMapper.getAceModeByExtension(extension));
+    }
+
+    private void launchSettingsDialog(VerticalLayout layout){
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Settings");
+        dialog.add(layout);
+        dialog.open();
     }
 
 
