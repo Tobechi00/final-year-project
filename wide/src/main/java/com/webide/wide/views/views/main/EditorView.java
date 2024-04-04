@@ -22,6 +22,8 @@ import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.component.upload.receivers.FileBuffer;
 import com.vaadin.flow.router.*;
 import com.vaadin.flow.server.HttpStatusCode;
 import com.vaadin.flow.server.StreamResource;
@@ -42,7 +44,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vaadin.olli.FileDownloadWrapper;
 
-import java.io.ByteArrayInputStream;
+import java.io.*;
+import java.nio.Buffer;
 import java.util.Map;
 
 
@@ -186,15 +189,16 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 runCode(aceEditor.getValue(),aceModeSelector.getValue().toString(), outputArea,inputArea));
 
         settingsButton.addClickListener(buttonClickEvent -> launchSettingsDialog(selectorLayout));
-        //
-        subMenu = menuItem.getSubMenu();
 
+
+
+        subMenu = menuItem.getSubMenu();
 
         subMenu.addItem("Save",menuItemClickEvent ->
                 save(currentFileName.getText(),currentFilePath));
 
-
         subMenu.addItem("Save As",onClick -> launchSaveDialogue());
+
         subMenu.addItem("Open Recent",onClick->{
             try {
                 ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
@@ -202,6 +206,15 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             }catch (Exception e){
                 logger.error(e.getMessage());
             }
+        });
+
+        subMenu.addItem("Upload File",onClick ->{
+            launchFileUploadDialogue(
+                    currentFileName,
+                    aceEditor,
+                    aceModeSelector,
+                    currentFilePath
+                    );
         });
 
         subMenu.addItem("New Project",onClick -> {
@@ -222,13 +235,11 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         ioLayout.setJustifyContentMode(JustifyContentMode.START);
         ioLayout.setAlignItems(Alignment.START);
 
-
         bottomGutter.setAlignItems(Alignment.START);
         bottomGutter.setJustifyContentMode(JustifyContentMode.START);
         bottomGutter.add(minimizeButton,ioLayout);
 
         bottomGutter.setHorizontalComponentAlignment(Alignment.END,minimizeButton);
-
 
         utilityScroller = new Scroller(bottomGutter);
         utilityScroller.setScrollDirection(Scroller.ScrollDirection.VERTICAL);
@@ -318,7 +329,8 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     //save content to existing file
     private void save(String currentFileName,String currentFilePath){
-        if ( !currentFileName.isEmpty() && !currentFileName.equals("Untitled Document") || !currentFilePath.isEmpty()){
+        System.out.println(currentFilePath);
+        if ( !currentFileName.isEmpty() && !currentFileName.equals("Untitled Document") && !currentFilePath.isEmpty()){
             try {
                 serverRequestMethods.saveFile(currentFilePath,aceEditor.getValue());
                 launchSaveSuccessMessage();
@@ -337,12 +349,13 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         ConfirmDialog dialog = new ConfirmDialog();
         TextField fileNameField  = new TextField();
 
+        fileNameField.setValue(currentFileName.getText());
+
         Button saveButton = new Button("Save");
         Button cancelButton = new Button("Cancel");
 
-        saveButton.addClickListener(buttonClickEvent -> {
-            saveAs(fileNameField);
-        });
+        saveButton.addClickListener(buttonClickEvent -> saveAs(fileNameField));
+        cancelButton.addClickListener(buttonClickEvent -> dialog.close());
 
         fileNameField.setLabel("File Name");
         dialog.setHeader("Save As");
@@ -419,7 +432,6 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         //todo:extract to method
         Button openFileButton = new Button("open");
 
-
         openFileButton.addClickListener(buttonClickEvent -> {
             if (!stringBuilder.isEmpty()) {
                 try {
@@ -453,7 +465,44 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         dialog.open();
     }
 
+    private void launchFileUploadDialogue(H4 fileHeader,AceEditor aceEditor,Select<AceMode> aceModeSelector,String currentFilePath){
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Upload");
 
+        FileBuffer fileBuffer = new FileBuffer();
+        Upload upload = new Upload(fileBuffer);
+
+        upload.addSucceededListener(succeededEvent -> {
+            String fileName = succeededEvent.getFileName();
+            fileHeader.setText(fileName);
+
+            StringBuilder fileContent = new StringBuilder();
+            try (
+                    InputStream inputStream = fileBuffer.getInputStream();
+                    InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+                    BufferedReader reader = new BufferedReader(inputStreamReader);
+            ){
+                String line;
+                while ((line = reader.readLine()) != null){
+                    fileContent.append(line).append("\n");
+                }
+
+                setAceModeByFileExtension(
+                        fileName.substring(fileName.lastIndexOf('.')),
+                        aceModeSelector
+                );
+
+                aceEditor.setValue(fileContent.toString());
+                dialog.close();
+            }catch (IOException e){
+                logger.error(e.getMessage());
+            }
+        });
+
+        currentFilePath = "";
+        dialog.add(upload);
+        dialog.open();
+    }
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
         if (VaadinSession.getCurrent().getAttribute("USER_TOKEN") == null){
