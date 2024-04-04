@@ -18,7 +18,6 @@ target/
 *.iws
 *.iml
 *.ipr
-*.properties
 
 ### NetBeans ###
 /nbproject/private/
@@ -32,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Ignore application.properties files
+/src/main/resources/application.properties
