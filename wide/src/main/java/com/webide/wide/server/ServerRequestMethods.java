@@ -36,7 +36,7 @@ public class ServerRequestMethods {
             //adding auth header to rest template
             setInterceptors(restTemplate);
 
-            String url = apiURL+"/python/submit";
+            String url = apiURL+"/"+programInputDao.getProgrammingLanguage()+"/exec";
             ResponseEntity<ProgramOutputDTO> responseEntity = restTemplate.postForEntity(url,programInputDao, ProgramOutputDTO.class);
 
             programOutputDto = responseEntity.getBody();
