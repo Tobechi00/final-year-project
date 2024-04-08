@@ -1,5 +1,6 @@
 package com.webide.wide.dataobjects.dao;
 
+import javax.swing.text.html.Option;
 import java.util.Optional;
 
 public class ProgramInputDAO {
@@ -8,6 +9,9 @@ public class ProgramInputDAO {
     private String program;
 
     private Optional<String> userInput;
+
+    //used to name the java file that will be created on the docker container
+    private Optional<String> fileName;
 
 
     public ProgramInputDAO(String programmingLanguage, String program, String userInput){
@@ -46,13 +50,21 @@ public class ProgramInputDAO {
         this.userInput = userInput;
     }
 
+    public Optional<String> getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(Optional<String> fileName) {
+        this.fileName = fileName;
+    }
 
     @Override
     public String toString() {
-        return "ProgramInputDao{" +
+        return "ProgramInputDAO{" +
                 "programmingLanguage='" + programmingLanguage + '\'' +
                 ", program='" + program + '\'' +
                 ", userInput=" + userInput +
+                ", fileName=" + fileName +
                 '}';
     }
 }

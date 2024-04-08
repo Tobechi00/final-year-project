@@ -9,6 +9,7 @@ import com.vaadin.flow.component.contextmenu.MenuItem;
 import com.vaadin.flow.component.contextmenu.SubMenu;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H4;
+import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.listbox.ListBox;
@@ -47,6 +48,7 @@ import org.vaadin.olli.FileDownloadWrapper;
 import java.io.*;
 import java.nio.Buffer;
 import java.util.Map;
+import java.util.Optional;
 
 
 @Route(value = "")
@@ -186,7 +188,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         selectorLayout.add(aceModeSelector,fontSizeSelector);
 
         executeButton.addClickListener(buttonClickEvent ->
-                runCode(aceEditor.getValue(),aceModeSelector.getValue().toString(), outputArea,inputArea));
+                runCode(aceEditor.getValue(),aceModeSelector.getValue(), outputArea,inputArea,"Main"));
 
         settingsButton.addClickListener(buttonClickEvent -> launchSettingsDialog(selectorLayout));
 
@@ -290,40 +292,110 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
      * @param outputArea code result output area
      * @param inputArea optional input area
      * */
-    public void runCode(String code, String language, AceEditor outputArea, TextArea inputArea){
+    public void runCode(String code, AceMode language, AceEditor outputArea, TextArea inputArea, String mainClass){
         ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
         ProgramOutputDTO programOutputDto;
 
-            try {
-                if (inputArea.getValue().isEmpty()) {
-                    //if code does not require input during execution
-                    programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language, code));
+        switch (language){
+            case java ->{
+
+                if (currentFilePath.isEmpty()){
+                    runJavaCode(code,inputArea, serverRequestMethods,Optional.empty());
                 }else {
-                    //if code requires input
-                    programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language,code,inputArea.getValue()));
+                    runJavaCode(code,inputArea, serverRequestMethods,Optional.of(currentFileName.getText()));
                 }
 
-                String output = programOutputDto.getProgramOutput()+"\n"+"Exit Code: "+programOutputDto.getExitCode();
-
-                //edit environmental details based on received error codes
-                if (programOutputDto.getExitCode() == 0){
-                    outputArea.getStyle().remove("color");
-                    outputArea.setValue(output);
-                    new CustomNotification("Program has been executed successfully", NotificationVariant.LUMO_SUCCESS).open();
-                }else if(programOutputDto.getExitCode() >= 0){
-                    outputArea.setValue(output);
-                    outputArea.getStyle().setColor("red");
-                    new CustomNotification("Program has produced an error",NotificationVariant.LUMO_ERROR).open();
-                }else if (programOutputDto.getExitCode() != HttpStatusCode.EXPECTATION_FAILED.getCode()){
-                    outputArea.setValue(output);
-                    outputArea.getStyle().setColor("yellow");
-                    new CustomNotification("Program took too long to execute",NotificationVariant.LUMO_WARNING).open();
-                }
-
-            }catch (Exception e){
-                logger.error(e.getMessage());
-                new CustomNotification("Error: Connection to the server could not be established", NotificationVariant.LUMO_ERROR).open();
             }
+            case python -> {
+                runPythonCode(code,inputArea,serverRequestMethods);
+            }
+            case text -> {
+                new CustomNotification("It Is Not Possible To Compile Text", NotificationVariant.LUMO_ERROR).open();
+            }
+            default -> {
+                new CustomNotification("Compilation For This Language Isn't Available", NotificationVariant.LUMO_ERROR).open();
+            }
+
+        }
+    }
+
+    private void runJavaCode(
+            String code,
+            TextArea inputArea,
+            ServerRequestMethods serverRequestMethods,
+            Optional<String> fileName
+    ){
+        ProgramOutputDTO programOutputDto;
+        String language = AceMode.java.toString();
+
+        code = code.replace("\"","\\\"");
+        try {
+            if (inputArea.getValue().isEmpty()) {
+                //if code does not require input during execution
+                ProgramInputDAO programInputDAO = new ProgramInputDAO(language, code);
+                programInputDAO.setFileName(fileName);
+
+                programOutputDto = serverRequestMethods.sendCodeRunRequest(programInputDAO);
+
+            } else {
+                ProgramInputDAO programInputDAO = new ProgramInputDAO(language, code, inputArea.getValue());
+                programInputDAO.setFileName(fileName);
+                programOutputDto = serverRequestMethods.sendCodeRunRequest(programInputDAO);
+            }
+
+            String output = programOutputDto.getProgramOutput() + "\n" + "Exit Code: " + programOutputDto.getExitCode();
+
+            //edit environmental details based on received error codes
+            displayProgramExecutionStatus(programOutputDto.getExitCode(), output);
+
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            new CustomNotification("An Error Occurred While Connecting To Server", NotificationVariant.LUMO_ERROR).open();
+        }
+    }
+
+    private void runPythonCode(
+            String code,
+            TextArea inputArea,
+            ServerRequestMethods serverRequestMethods
+    ){
+        ProgramOutputDTO programOutputDto;
+        code = code.replaceAll("\"","'");
+        String language = AceMode.python.toString();
+        try {
+            if (inputArea.getValue().isEmpty()) {
+                //if code does not require input during execution
+                programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language.toString(), code));
+            } else {
+                //if code requires input
+                programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language.toString(), code, inputArea.getValue()));
+            }
+
+            String output = programOutputDto.getProgramOutput() + "\n" + "Exit Code: " + programOutputDto.getExitCode();
+
+            //edit environmental details based on received error codes
+            displayProgramExecutionStatus(programOutputDto.getExitCode(), output);
+
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            new CustomNotification("Error: Connection to the server could not be established", NotificationVariant.LUMO_ERROR).open();
+        }
+    }
+
+    private void displayProgramExecutionStatus(int exitCode,String output){
+        if (exitCode == 0) {
+            outputArea.getStyle().remove("color");
+            outputArea.setValue(output);
+            new CustomNotification("Program has been executed successfully", NotificationVariant.LUMO_SUCCESS).open();
+        } else if (exitCode >= 0) {
+            outputArea.setValue(output);
+            outputArea.getStyle().setColor("red");
+            new CustomNotification("Program has produced an error", NotificationVariant.LUMO_ERROR).open();
+        } else if (exitCode != HttpStatusCode.EXPECTATION_FAILED.getCode()) {
+            outputArea.setValue(output);
+            outputArea.getStyle().setColor("yellow");
+            new CustomNotification("Program took too long to execute", NotificationVariant.LUMO_WARNING).open();
+        }
     }
 
 
@@ -380,11 +452,17 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             ExtensionMapper extensionMapper = new ExtensionMapper();
 
             String basePath = "C:\\Users\\tobec\\ServerData\\user-files\\";
-            String completePath = basePath+fileNameField.getValue()+extensionMapper.getExtensionByAceMode(aceEditor.getMode());
+            String completePath = basePath+fileNameField.getValue()+extensionMapper
+                    .getExtensionByAceMode(aceEditor.getMode());
 
-            serverRequestMethods.saveFileAs(currentFilePath,completePath,aceEditor.getValue());
+            serverRequestMethods.saveFileAs(
+                    currentFilePath,
+                    completePath,
+                    aceEditor.getValue());
+
             currentFilePath = basePath+fileNameField.getValue();
-            currentFileName.setText(fileNameField.getValue()+extensionMapper.getExtensionByAceMode(aceEditor.getMode()));
+            currentFileName.setText(fileNameField.getValue()+extensionMapper
+                    .getExtensionByAceMode(aceEditor.getMode()));
 
             launchSaveSuccessMessage();
         }catch (Exception e){
@@ -413,7 +491,9 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
 
     //dialog for recent files
-    private void launchRecentFilesDialog(Map<String,String> fileList,AceEditor aceEditor){
+    private void launchRecentFilesDialog(
+            Map<String,String> fileList,
+            AceEditor aceEditor){
         Dialog dialog = new Dialog();
 
         dialog.setHeaderTitle("Recent Files");
@@ -465,7 +545,12 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         dialog.open();
     }
 
-    private void launchFileUploadDialogue(H4 fileHeader,AceEditor aceEditor,Select<AceMode> aceModeSelector,String currentFilePath){
+    private void launchFileUploadDialogue(
+            H4 fileHeader,
+            AceEditor aceEditor,
+            Select<AceMode> aceModeSelector,
+            String currentFilePath
+    ){
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Upload");
 
@@ -498,7 +583,6 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 logger.error(e.getMessage());
             }
         });
-
         currentFilePath = "";
         dialog.add(upload);
         dialog.open();
