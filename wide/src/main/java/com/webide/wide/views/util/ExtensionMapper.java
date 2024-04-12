@@ -6,29 +6,75 @@ import java.util.HashMap;
 
 public class ExtensionMapper {
 
-    private final HashMap<AceMode,String> aceExtensionMap = new HashMap<>();
-    private final HashMap<String,AceMode> extensionAceMap = new HashMap<>();
+    private static final HashMap<AceMode,String> aceToExtensionMap = new HashMap<>();
+    private static final HashMap<String,AceMode> extensionToAceMap = new HashMap<>();
 
-    public ExtensionMapper(){
+    private static final HashMap<AceMode,String> aceToDefaultTextMap = new HashMap<>();
+
+
+    static {
         // Mapping Ace modes to file extensions
-        aceExtensionMap.put(AceMode.python,".py");
-        aceExtensionMap.put(AceMode.lisp,".lsp");
-        aceExtensionMap.put(AceMode.java,".java");
-        aceExtensionMap.put(AceMode.text,".txt");
+        aceToExtensionMap.put(AceMode.python,".py");
+        aceToExtensionMap.put(AceMode.lisp,".lsp");
+        aceToExtensionMap.put(AceMode.java,".java");
+        aceToExtensionMap.put(AceMode.text,".txt");
+        aceToExtensionMap.put(AceMode.c_cpp,".c");
 
         // Mapping file extensions to Ace modes
-        extensionAceMap.put(".py",AceMode.python);
-        extensionAceMap.put(".lsp",AceMode.lisp);
-        extensionAceMap.put(".java",AceMode.java);
-        extensionAceMap.put(".txt",AceMode.text);
+        extensionToAceMap.put(".py",AceMode.python);
+        extensionToAceMap.put(".lsp",AceMode.lisp);
+        extensionToAceMap.put(".java",AceMode.java);
+        extensionToAceMap.put(".txt",AceMode.text);
+        extensionToAceMap.put(".c",AceMode.c_cpp);
+
+        //Mapping Ace modes to default text
+
+        aceToDefaultTextMap.put(
+                AceMode.java,
+                """
+                        public class Main {
+                            public static void main(String[] args) {
+                                // Your Code Goes Here
+                            }
+                        }
+                        """
+        );
+
+        aceToDefaultTextMap.put(
+                AceMode.python,
+                "# Your code goes here"
+        );
+
+        aceToDefaultTextMap.put(
+                AceMode.c_cpp,
+                """
+                        #include <stdio.h>
+
+                        int main(void) {
+                        \t// your code goes here
+
+                        }
+                        """
+        );
+
+        aceToDefaultTextMap.put(
+                AceMode.text,
+                "#-- Your Text Goes Here --#"
+        );
+
+
     }
 
-    public AceMode getAceModeByExtension(String extension){
-        return extensionAceMap.get(extension);
+    public static AceMode getAceModeByExtension(String extension){
+        return extensionToAceMap.get(extension);
     }
 
-    public String getExtensionByAceMode(AceMode aceMode){
-        return  aceExtensionMap.get(aceMode);
+    public static String getExtensionByAceMode(AceMode aceMode){
+        return  aceToExtensionMap.get(aceMode);
+    }
+
+    public static String getDefaultTextByAceMode(AceMode aceMode){
+        return aceToDefaultTextMap.get(aceMode);
     }
 
 
