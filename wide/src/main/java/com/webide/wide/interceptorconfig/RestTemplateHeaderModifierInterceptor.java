@@ -14,7 +14,10 @@ public class RestTemplateHeaderModifierInterceptor implements ClientHttpRequestI
 
     // interceptor to add auth header
     @Override
-    public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
+    public ClientHttpResponse intercept(
+            HttpRequest request,
+            byte[] body,
+            ClientHttpRequestExecution execution) throws IOException {
         try {
             String token = VaadinSession.getCurrent().getAttribute("USER_TOKEN").toString();
             //works but token empty

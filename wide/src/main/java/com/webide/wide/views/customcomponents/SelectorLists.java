@@ -17,10 +17,8 @@ public class SelectorLists {
 
         list.add(AceMode.text);
         list.add(AceMode.python);
-        list.add(AceMode.lisp);
         list.add(AceMode.java);
-        list.add(AceMode.rust);
-        list.add(AceMode.javascript);
+        list.add(AceMode.c_cpp);
 
         aceModeSelect.setItems(list);
         aceModeSelect.setValue(list.get(0));

@@ -9,7 +9,6 @@ import com.vaadin.flow.component.contextmenu.MenuItem;
 import com.vaadin.flow.component.contextmenu.SubMenu;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H4;
-import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.listbox.ListBox;
@@ -45,8 +44,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vaadin.olli.FileDownloadWrapper;
 
+import java.awt.*;
 import java.io.*;
-import java.nio.Buffer;
 import java.util.Map;
 import java.util.Optional;
 
@@ -71,7 +70,6 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     MenuBar fileButton;
     Select<AceMode> aceModeSelector;
     Select<Integer> fontSizeSelector;
-    ExtensionMapper extensionMapper;
     TextArea inputArea;
     H4 currentFileName;
     TextNote textNote;
@@ -93,6 +91,9 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         aceEditor.setDisplayIndentGuides(true);
         aceEditor.setTheme(AceTheme.nord_dark);
         aceEditor.setShowInvisibles(true);
+        aceEditor.setValue(ExtensionMapper.getDefaultTextByAceMode(
+                aceEditor.getMode())
+        );
 
         //layouts
         bottomGutter = new VerticalLayout();
@@ -143,12 +144,11 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         minimizeButton = new Button(minimizeIcon);
         menuItem = fileButton.addItem(fileIcon);
 
-        extensionMapper = new ExtensionMapper();
 
         //wrapping button with a download wrapper
         buttonDownloadWrapper = new FileDownloadWrapper(
                 new StreamResource(
-                        currentFileName.getText()+extensionMapper.getExtensionByAceMode(
+                        currentFileName.getText()+ExtensionMapper.getExtensionByAceMode(
                                 aceEditor.getMode()),
                         () -> new ByteArrayInputStream(aceEditor.getValue().getBytes()))
         );
@@ -162,14 +162,17 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         fontSizeSelector = SelectorLists.getSizeSelector();
 
         aceModeSelector.addValueChangeListener(event ->{
+
             try {
-                aceEditor.setMode(event.getValue());
+
+                launchAceModeChangeDialog(event.getValue(),aceEditor);
+
                 //button needs to be removed before being added again
                 utilityButtonLayout.remove(buttonDownloadWrapper);
 
                 buttonDownloadWrapper = new FileDownloadWrapper(
                         new StreamResource(
-                                currentFileName.getText()+extensionMapper.getExtensionByAceMode(aceEditor.getMode()),
+                                currentFileName.getText()+ExtensionMapper.getExtensionByAceMode(aceEditor.getMode()),
                                 () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())
                         ));
                 buttonDownloadWrapper.wrapComponent(downloadButton);
@@ -178,6 +181,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             }catch (Exception e){
                 logger.warn(e.getMessage());
             }
+
         });
 
         utilityButtonLayout.add(executeButton,noteButton,fileButton,buttonDownloadWrapper);
@@ -188,7 +192,13 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         selectorLayout.add(aceModeSelector,fontSizeSelector);
 
         executeButton.addClickListener(buttonClickEvent ->
-                runCode(aceEditor.getValue(),aceModeSelector.getValue(), outputArea,inputArea,"Main"));
+                runCode(
+                        aceEditor.getValue(),
+                        aceModeSelector.getValue(),
+                        outputArea,inputArea,
+                        currentFilePath,
+                        currentFileName.getText())
+        );
 
         settingsButton.addClickListener(buttonClickEvent -> launchSettingsDialog(selectorLayout));
 
@@ -204,24 +214,32 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         subMenu.addItem("Open Recent",onClick->{
             try {
                 ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
-                launchRecentFilesDialog(serverRequestMethods.getUserFiles((Long) VaadinSession.getCurrent().getAttribute("ID")),aceEditor);
+                launchRecentFilesDialog(
+                        serverRequestMethods.getUserFiles(
+                                (Long) VaadinSession.getCurrent().getAttribute("ID")),
+                        aceEditor);
             }catch (Exception e){
                 logger.error(e.getMessage());
             }
         });
 
-        subMenu.addItem("Upload File",onClick ->{
-            launchFileUploadDialogue(
-                    currentFileName,
-                    aceEditor,
-                    aceModeSelector,
-                    currentFilePath
-                    );
-        });
+        subMenu.addItem("Upload File",onClick -> launchFileUploadDialogue(
+                currentFileName,
+                aceEditor,
+                aceModeSelector,
+                currentFilePath
+                ));
 
         subMenu.addItem("New Project",onClick -> {
-            aceEditor.clear();
-            currentFileName.setText("Untitled Document");
+            aceEditor.setValue(
+                    ExtensionMapper.getDefaultTextByAceMode(
+                    aceModeSelector.getValue()
+            ));
+            try {
+                currentFileName.setText("Untitled Document");
+            }catch (Exception e){
+                logger.error(e.getMessage());
+            }
             currentFilePath = "";
                 });
 
@@ -292,29 +310,60 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
      * @param outputArea code result output area
      * @param inputArea optional input area
      * */
-    public void runCode(String code, AceMode language, AceEditor outputArea, TextArea inputArea, String mainClass){
+    private void runCode(
+            String code,
+            AceMode language,
+            AceEditor outputArea,
+            TextArea inputArea,
+            String currentFilePath,
+            String currentFileName){
+
         ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
-        ProgramOutputDTO programOutputDto;
 
         switch (language){
             case java ->{
 
                 if (currentFilePath.isEmpty()){
-                    runJavaCode(code,inputArea, serverRequestMethods,Optional.empty());
+                    runJavaCode(
+                            code,
+                            inputArea,
+                            outputArea,
+                            serverRequestMethods,
+                            Optional.empty());
                 }else {
-                    runJavaCode(code,inputArea, serverRequestMethods,Optional.of(currentFileName.getText()));
+                    runJavaCode(
+                            code,
+                            inputArea,
+                            outputArea,
+                            serverRequestMethods,
+                            Optional.of(currentFileName));
                 }
+            }
+            case python ->
+                runPythonCode(
+                        code,
+                        inputArea,
+                        outputArea,
+                        serverRequestMethods
+                );
+            case text ->
+                    new CustomNotification(
+                    "It Is Not Possible To Compile Text",
+                    NotificationVariant.LUMO_ERROR
+                    ).open();
 
-            }
-            case python -> {
-                runPythonCode(code,inputArea,serverRequestMethods);
-            }
-            case text -> {
-                new CustomNotification("It Is Not Possible To Compile Text", NotificationVariant.LUMO_ERROR).open();
-            }
-            default -> {
-                new CustomNotification("Compilation For This Language Isn't Available", NotificationVariant.LUMO_ERROR).open();
-            }
+            case c_cpp ->
+                runCCode(
+                        code,
+                        inputArea,
+                        outputArea,
+                        serverRequestMethods
+                );
+            default ->
+                    new CustomNotification(
+                    "Compilation For This Language Isn't Available",
+                    NotificationVariant.LUMO_ERROR
+            ).open();
 
         }
     }
@@ -322,6 +371,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     private void runJavaCode(
             String code,
             TextArea inputArea,
+            AceEditor outputArea,
             ServerRequestMethods serverRequestMethods,
             Optional<String> fileName
     ){
@@ -338,25 +388,35 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 programOutputDto = serverRequestMethods.sendCodeRunRequest(programInputDAO);
 
             } else {
-                ProgramInputDAO programInputDAO = new ProgramInputDAO(language, code, inputArea.getValue());
+
+                ProgramInputDAO programInputDAO = new ProgramInputDAO(
+                        language, code, inputArea.getValue());
+
                 programInputDAO.setFileName(fileName);
                 programOutputDto = serverRequestMethods.sendCodeRunRequest(programInputDAO);
             }
 
-            String output = programOutputDto.getProgramOutput() + "\n" + "Exit Code: " + programOutputDto.getExitCode();
+            String output = programOutputDto.getProgramOutput()
+                    + "\n" + "Exit Code: "
+                    + programOutputDto.getExitCode();
 
             //edit environmental details based on received error codes
-            displayProgramExecutionStatus(programOutputDto.getExitCode(), output);
+            displayProgramExecutionStatus(
+                    programOutputDto.getExitCode(),
+                    output,outputArea);
 
         } catch (Exception e) {
             logger.error(e.getMessage());
-            new CustomNotification("An Error Occurred While Connecting To Server", NotificationVariant.LUMO_ERROR).open();
+            new CustomNotification(
+                    "An Error Occurred While Connecting To Server",
+                    NotificationVariant.LUMO_ERROR).open();
         }
     }
 
     private void runPythonCode(
             String code,
             TextArea inputArea,
+            AceEditor outputArea,
             ServerRequestMethods serverRequestMethods
     ){
         ProgramOutputDTO programOutputDto;
@@ -365,16 +425,16 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         try {
             if (inputArea.getValue().isEmpty()) {
                 //if code does not require input during execution
-                programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language.toString(), code));
+                programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language, code));
             } else {
                 //if code requires input
-                programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language.toString(), code, inputArea.getValue()));
+                programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language, code, inputArea.getValue()));
             }
 
             String output = programOutputDto.getProgramOutput() + "\n" + "Exit Code: " + programOutputDto.getExitCode();
 
             //edit environmental details based on received error codes
-            displayProgramExecutionStatus(programOutputDto.getExitCode(), output);
+            displayProgramExecutionStatus(programOutputDto.getExitCode(), output, outputArea);
 
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -382,7 +442,37 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         }
     }
 
-    private void displayProgramExecutionStatus(int exitCode,String output){
+    private void runCCode(
+            String code,
+            TextArea inputArea,
+            AceEditor outputArea,
+            ServerRequestMethods serverRequestMethods
+    ){
+        ProgramOutputDTO programOutputDto;
+        code = code.replace("\"","\\\"");
+        String language = "c";
+        try {
+            if (inputArea.getValue().isEmpty()) {
+                //if code does not require input during execution
+                programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language, code));
+            } else {
+                //if code requires input
+                programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language, code, inputArea.getValue()));
+            }
+
+            String output = programOutputDto.getProgramOutput() + "\n" + "Exit Code: " + programOutputDto.getExitCode();
+
+
+            //edit environmental details based on received error codes
+            displayProgramExecutionStatus(programOutputDto.getExitCode(), output, outputArea);
+
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            new CustomNotification("Error: Connection to the server could not be established", NotificationVariant.LUMO_ERROR).open();
+        }
+    }
+
+    private void displayProgramExecutionStatus(int exitCode,String output,AceEditor outputArea){
         if (exitCode == 0) {
             outputArea.getStyle().remove("color");
             outputArea.setValue(output);
@@ -449,11 +539,16 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     private void saveAs(TextField fileNameField){
         try {
             ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
-            ExtensionMapper extensionMapper = new ExtensionMapper();
 
             String basePath = "C:\\Users\\tobec\\ServerData\\user-files\\";
-            String completePath = basePath+fileNameField.getValue()+extensionMapper
-                    .getExtensionByAceMode(aceEditor.getMode());
+            String completePath = "";
+
+            if (aceEditor.getMode() == AceMode.c_cpp){
+                completePath = basePath+fileNameField.getValue()+".c";
+            }else {
+                completePath = basePath+fileNameField.getValue()+
+                        ExtensionMapper.getExtensionByAceMode(aceEditor.getMode());
+            }
 
             serverRequestMethods.saveFileAs(
                     currentFilePath,
@@ -461,8 +556,8 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                     aceEditor.getValue());
 
             currentFilePath = basePath+fileNameField.getValue();
-            currentFileName.setText(fileNameField.getValue()+extensionMapper
-                    .getExtensionByAceMode(aceEditor.getMode()));
+            currentFileName.setText(fileNameField.getValue()+
+                    ExtensionMapper.getExtensionByAceMode(aceEditor.getMode()));
 
             launchSaveSuccessMessage();
         }catch (Exception e){
@@ -534,8 +629,11 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     }
 
     private void setAceModeByFileExtension(String extension,Select<AceMode> selector){
-        extensionMapper = new ExtensionMapper();
-        selector.setValue(extensionMapper.getAceModeByExtension(extension));
+        if (extension.equals(".c")){
+            selector.setValue(AceMode.c_cpp);
+        }else {
+            selector.setValue(ExtensionMapper.getAceModeByExtension(extension));
+        }
     }
 
     private void launchSettingsDialog(VerticalLayout layout){
@@ -565,7 +663,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             try (
                     InputStream inputStream = fileBuffer.getInputStream();
                     InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
-                    BufferedReader reader = new BufferedReader(inputStreamReader);
+                    BufferedReader reader = new BufferedReader(inputStreamReader)
             ){
                 String line;
                 while ((line = reader.readLine()) != null){
@@ -585,6 +683,44 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         });
         currentFilePath = "";
         dialog.add(upload);
+        dialog.open();
+    }
+
+    private void launchAceModeChangeDialog(AceMode aceMode,AceEditor aceEditor){
+        ConfirmDialog dialog = new ConfirmDialog();
+
+        Button confirmButton = new Button("Confirm",onClick -> {
+            try {
+                aceEditor.setMode(aceMode);
+                aceEditor.setValue(
+                        ExtensionMapper.getDefaultTextByAceMode(aceMode)
+                );
+            }catch (Exception e){
+                //log err
+            }finally {
+                dialog.close();
+                new CustomNotification("language mode changed successfully",NotificationVariant.LUMO_SUCCESS).open();
+            }
+        });
+
+        Button cancelButton = new Button("Cancel",onClick-> {
+            aceModeSelector.setValue(aceEditor.getMode());
+            dialog.close();
+        }
+        );
+
+        cancelButton.getStyle().setColor("red");
+
+        dialog.setHeader("Are You Sure?");
+        dialog.setText("Doing this will clear your current work");
+        dialog.setCloseOnEsc(false);
+
+        dialog.setCancelable(true);
+
+        dialog.setConfirmButton(confirmButton);
+        dialog.setCancelButton(cancelButton);
+
+
         dialog.open();
     }
     @Override
