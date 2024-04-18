@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 @Theme(themeClass = Lumo.class, variant = Lumo.DARK)
-public class WideApplication implements AppShellConfigurator {
+public class  WideApplication implements AppShellConfigurator {
 
 	public static void main(String[] args) {
 		SpringApplication.run(WideApplication.class, args);

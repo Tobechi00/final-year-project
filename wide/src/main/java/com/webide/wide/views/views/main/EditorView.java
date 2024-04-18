@@ -44,7 +44,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vaadin.olli.FileDownloadWrapper;
 
-import java.awt.*;
 import java.io.*;
 import java.util.Map;
 import java.util.Optional;
@@ -271,7 +270,16 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         splitLayout.setSizeFull();
         //sets position 70:30
         splitLayout.setSplitterPosition(70);
-        minimizeButton.addClickListener(buttonClickEvent -> splitLayout.setSplitterPosition(100));
+
+        //temp fix for splitter not closing
+        splitLayout.addSplitterDragendListener(splitterDragendEvent ->
+                splitLayout.setSplitterPosition(splitLayout.getSplitterPosition()));
+
+        minimizeButton.addClickListener(buttonClickEvent ->{
+            if (splitLayout.getSplitterPosition() != 100){
+                splitLayout.setSplitterPosition(100);
+            }
+        });
 
         navLayout.setWidthFull();
 
@@ -378,7 +386,12 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         ProgramOutputDTO programOutputDto;
         String language = AceMode.java.toString();
 
-        code = code.replace("\"","\\\"");
+        code = code.replace("\"","\\\"")
+                .replace("'", "'\\''");
+
+
+
+        String output;
         try {
             if (inputArea.getValue().isEmpty()) {
                 //if code does not require input during execution
@@ -387,6 +400,10 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
                 programOutputDto = serverRequestMethods.sendCodeRunRequest(programInputDAO);
 
+                output = programOutputDto.getProgramOutput() + "\n"
+                        + "Exit Code: " + programOutputDto.getExitCode() + "\n"
+                        + "Execution Time: "+nanoSecondsToSeconds(
+                        programOutputDto.getExecutionTime(), 4);
             } else {
 
                 ProgramInputDAO programInputDAO = new ProgramInputDAO(
@@ -394,11 +411,27 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
                 programInputDAO.setFileName(fileName);
                 programOutputDto = serverRequestMethods.sendCodeRunRequest(programInputDAO);
+
+                String[] outputArray = programOutputDto.getProgramOutput().split("\\r?\\n");
+                StringBuilder sb = new StringBuilder();
+
+                int i = 0;
+                for (String s : outputArray){
+                    if (i%2 == 0) {
+                        sb.append(s).append("\n");
+                    }
+                    i++;
+                }
+                sb.append("Exit Code: ")
+                        .append(programOutputDto.getExitCode())
+                        .append("\n")
+                        .append("Execution Time: ")
+                        .append(nanoSecondsToSeconds(
+                                programOutputDto.getExecutionTime(), 4));
+                output = sb.toString();
             }
 
-            String output = programOutputDto.getProgramOutput()
-                    + "\n" + "Exit Code: "
-                    + programOutputDto.getExitCode();
+
 
             //edit environmental details based on received error codes
             displayProgramExecutionStatus(
@@ -431,7 +464,10 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language, code, inputArea.getValue()));
             }
 
-            String output = programOutputDto.getProgramOutput() + "\n" + "Exit Code: " + programOutputDto.getExitCode();
+            String output = programOutputDto.getProgramOutput() + "\n"
+                    + "Exit Code: " + programOutputDto.getExitCode() + "\n"
+                    + "Execution Time: "+nanoSecondsToSeconds(
+                    programOutputDto.getExecutionTime(), 4);
 
             //edit environmental details based on received error codes
             displayProgramExecutionStatus(programOutputDto.getExitCode(), output, outputArea);
@@ -449,18 +485,26 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             ServerRequestMethods serverRequestMethods
     ){
         ProgramOutputDTO programOutputDto;
-        code = code.replace("\"","\\\"");
+        code = code.replace("\"","\\\"")
+                .replace("'", "'\\''");
         String language = "c";
+        String output;
         try {
             if (inputArea.getValue().isEmpty()) {
                 //if code does not require input during execution
                 programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language, code));
+                output = programOutputDto.getProgramOutput() + "\n"
+                        + "Exit Code: " + programOutputDto.getExitCode() + "\n"
+                        + "Execution Time: "+nanoSecondsToSeconds(
+                        programOutputDto.getExecutionTime(), 4);
             } else {
                 //if code requires input
                 programOutputDto = serverRequestMethods.sendCodeRunRequest(new ProgramInputDAO(language, code, inputArea.getValue()));
+                output = programOutputDto.getProgramOutput() + "\n"
+                        + "Exit Code: " + programOutputDto.getExitCode() + "\n"
+                        + "Execution Time: "+nanoSecondsToSeconds(
+                        programOutputDto.getExecutionTime(), 4);
             }
-
-            String output = programOutputDto.getProgramOutput() + "\n" + "Exit Code: " + programOutputDto.getExitCode();
 
 
             //edit environmental details based on received error codes
@@ -474,16 +518,16 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     private void displayProgramExecutionStatus(int exitCode,String output,AceEditor outputArea){
         if (exitCode == 0) {
-            outputArea.getStyle().remove("color");
+//            outputArea.getStyle().remove("color");
             outputArea.setValue(output);
             new CustomNotification("Program has been executed successfully", NotificationVariant.LUMO_SUCCESS).open();
         } else if (exitCode >= 0) {
             outputArea.setValue(output);
-            outputArea.getStyle().setColor("red");
+//            outputArea.getStyle().setColor("red");
             new CustomNotification("Program has produced an error", NotificationVariant.LUMO_ERROR).open();
-        } else if (exitCode != HttpStatusCode.EXPECTATION_FAILED.getCode()) {
+        } else if (exitCode == HttpStatusCode.EXPECTATION_FAILED.getCode()) {
             outputArea.setValue(output);
-            outputArea.getStyle().setColor("yellow");
+//            outputArea.getStyle().setColor("yellow");
             new CustomNotification("Program took too long to execute", NotificationVariant.LUMO_WARNING).open();
         }
     }
@@ -541,7 +585,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             ServerRequestMethods serverRequestMethods = new ServerRequestMethods();
 
             String basePath = "C:\\Users\\tobec\\ServerData\\user-files\\";
-            String completePath = "";
+            String completePath;
 
             if (aceEditor.getMode() == AceMode.c_cpp){
                 completePath = basePath+fileNameField.getValue()+".c";
@@ -604,7 +648,6 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         listBox.setItems(fileList.keySet().stream().toList());
         dialog.add(listBox);
 
-        //todo:extract to method
         Button openFileButton = new Button("open");
 
         openFileButton.addClickListener(buttonClickEvent -> {
@@ -677,7 +720,9 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
                 aceEditor.setValue(fileContent.toString());
                 dialog.close();
+                new CustomNotification("file uploaded successfully",NotificationVariant.LUMO_SUCCESS).open();
             }catch (IOException e){
+                new CustomNotification("an error occurred while uploading file",NotificationVariant.LUMO_ERROR).open();
                 logger.error(e.getMessage());
             }
         });
@@ -699,7 +744,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 //log err
             }finally {
                 dialog.close();
-                new CustomNotification("language mode changed successfully",NotificationVariant.LUMO_SUCCESS).open();
+                new CustomNotification("language mode changed",NotificationVariant.LUMO_SUCCESS).open();
             }
         });
 
@@ -722,6 +767,12 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
 
         dialog.open();
+    }
+
+    private String nanoSecondsToSeconds(long nanoSeconds, int decimalPlaces){
+        double seconds = (double) nanoSeconds / 1_000_000_000.0;
+        String formatString = "%." + decimalPlaces + "f";
+        return String.format(formatString, seconds);
     }
     @Override
     public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
