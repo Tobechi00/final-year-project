@@ -249,7 +249,7 @@
     "@polymer/polymer": "$@polymer/polymer",
     "@vaadin/vaadin-themable-mixin": "$@vaadin/vaadin-themable-mixin",
     "date-fns": "$date-fns",
-    "@f0rce/lit-ace": "$@f0rce/lit-ace",
-    "mobile-drag-drop": "$mobile-drag-drop"
+    "mobile-drag-drop": "$mobile-drag-drop",
+    "@f0rce/lit-ace": "$@f0rce/lit-ace"
   }
 }
