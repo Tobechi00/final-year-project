@@ -1,9 +1,12 @@
 package com.webide.wide.views.views.main;
 
 
+import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.KeyModifier;
 import com.vaadin.flow.component.Unit;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.contextmenu.MenuItem;
 import com.vaadin.flow.component.contextmenu.SubMenu;
@@ -32,6 +35,7 @@ import com.vaadin.flow.theme.lumo.LumoIcon;
 import com.webide.wide.dataobjects.dao.ProgramInputDAO;
 import com.webide.wide.dataobjects.dto.ProgramOutputDTO;
 import com.webide.wide.server.ServerRequestMethods;
+import com.webide.wide.views.customcomponents.AvatarCard;
 import com.webide.wide.views.customcomponents.CustomNotification;
 import com.webide.wide.views.customcomponents.SelectorLists;
 import com.webide.wide.views.customcomponents.TextNote;
@@ -54,8 +58,6 @@ import java.util.Optional;
 @PageTitle("W-ide")
 public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
-    //todo: error with stacking error notifications ensure to rectify, also consider using an arrow to open and close the utility window
-
     AceEditor aceEditor, outputArea;
     MenuItem menuItem;
     SubMenu subMenu;
@@ -65,7 +67,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     Icon runIcon,downloadIcon,noteIcon,settingIcon,fileIcon,minimizeIcon;
     Scroller utilityScroller;
     FileDownloadWrapper buttonDownloadWrapper;
-    Button minimizeButton,executeButton,downloadButton,noteButton,settingsButton;
+    Button minimizeButton,executeButton,downloadButton,noteButton,settingsButton,avatarButton;
     MenuBar fileButton;
     Select<AceMode> aceModeSelector;
     Select<Integer> fontSizeSelector;
@@ -143,6 +145,17 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         minimizeButton = new Button(minimizeIcon);
         menuItem = fileButton.addItem(fileIcon);
 
+        executeButton.addClickShortcut(Key.F5);
+        settingsButton.addClickShortcut(Key.F4);
+        downloadButton.addClickShortcut(Key.F10);
+        noteButton.addClickShortcut(Key.F6);
+        minimizeButton.addClickShortcut(Key.F7);
+
+        executeButton.setTooltipText("Execute");
+        settingsButton.setTooltipText("Settings");
+        downloadButton.setTooltipText("Download");
+        noteButton.setTooltipText("Notes");
+        minimizeButton.setTooltipText("Minimize");
 
         //wrapping button with a download wrapper
         buttonDownloadWrapper = new FileDownloadWrapper(
@@ -161,22 +174,19 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         fontSizeSelector = SelectorLists.getSizeSelector();
 
         aceModeSelector.addValueChangeListener(event ->{
-
             try {
-
+                //todo: reconfigure, causing problems for the user remove and decouple
                 launchAceModeChangeDialog(event.getValue(),aceEditor);
 
                 //button needs to be removed before being added again
-                utilityButtonLayout.remove(buttonDownloadWrapper);
 
-                buttonDownloadWrapper = new FileDownloadWrapper(
+                buttonDownloadWrapper.setResource(
                         new StreamResource(
-                                currentFileName.getText()+ExtensionMapper.getExtensionByAceMode(aceEditor.getMode()),
-                                () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())
-                        ));
-                buttonDownloadWrapper.wrapComponent(downloadButton);
+                        currentFileName.getText()+ExtensionMapper.getExtensionByAceMode(
+                                aceModeSelector.getValue()),
+                        () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())
+                ));
 
-                utilityButtonLayout.add(buttonDownloadWrapper);
             }catch (Exception e){
                 logger.warn(e.getMessage());
             }
@@ -185,8 +195,10 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
         utilityButtonLayout.add(executeButton,noteButton,fileButton,buttonDownloadWrapper);
 
-        fontSizeSelector.addValueChangeListener(event->
-                aceEditor.setFontSize(event.getValue()));
+        fontSizeSelector.addValueChangeListener(event->{
+            aceEditor.setFontSize(event.getValue());
+            outputArea.setFontSize(event.getValue());
+                });
 
         selectorLayout.add(aceModeSelector,fontSizeSelector);
 
@@ -249,6 +261,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         outputArea.setReadOnly(true);
         outputArea.setMode(AceMode.text);
         outputArea.setValue("Output");
+        outputArea.setFontSize(aceEditor.getFontSize());
 
         ioLayout.add(inputArea, outputArea);
         ioLayout.setJustifyContentMode(JustifyContentMode.START);
@@ -269,7 +282,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         splitLayout.setOrientation(SplitLayout.Orientation.VERTICAL);
         splitLayout.setSizeFull();
         //sets position 70:30
-        splitLayout.setSplitterPosition(70);
+        splitLayout.setSplitterPosition(60);
 
         //temp fix for splitter not closing
         splitLayout.addSplitterDragendListener(splitterDragendEvent ->
@@ -300,7 +313,13 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         avatar = new Avatar(firstName+" "+lastName);
         avatar.getStyle().setColor("white");
 
-        navEnd.add(avatar);
+        //wrapping avatar in button to achieve onclick effect
+        avatarButton = new Button(avatar);
+        avatarButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+
+        avatarButton.addClickListener(clickEvent -> new AvatarCard().open());
+
+        navEnd.add(avatarButton);
         navEnd.setWidthFull();
         navEnd.setJustifyContentMode(JustifyContentMode.END);
         navEnd.setAlignSelf(Alignment.END);
@@ -314,7 +333,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     /**
      * sends code run request
      * @param code user cade collected from aceEditor
-     * @param language language used by user
+     * @param language language selected by user
      * @param outputArea code result output area
      * @param inputArea optional input area
      * */
@@ -412,26 +431,17 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 programInputDAO.setFileName(fileName);
                 programOutputDto = serverRequestMethods.sendCodeRunRequest(programInputDAO);
 
-                String[] outputArray = programOutputDto.getProgramOutput().split("\\r?\\n");
-                StringBuilder sb = new StringBuilder();
+//                programOutputDto.getProgramOutput().split("\\r?\\n");
 
-                int i = 0;
-                for (String s : outputArray){
-                    if (i%2 == 0) {
-                        sb.append(s).append("\n");
-                    }
-                    i++;
-                }
-                sb.append("Exit Code: ")
-                        .append(programOutputDto.getExitCode())
-                        .append("\n")
-                        .append("Execution Time: ")
-                        .append(nanoSecondsToSeconds(
-                                programOutputDto.getExecutionTime(), 4));
-                output = sb.toString();
+                output = programOutputDto.getProgramOutput()+
+                        "\n"+
+                        "Exit Code: " +
+                        programOutputDto.getExitCode() +
+                        "\n" +
+                        "Execution Time: " +
+                        nanoSecondsToSeconds(
+                                programOutputDto.getExecutionTime(), 4);
             }
-
-
 
             //edit environmental details based on received error codes
             displayProgramExecutionStatus(
@@ -517,18 +527,22 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     }
 
     private void displayProgramExecutionStatus(int exitCode,String output,AceEditor outputArea){
+
+        //todo: add to method param
+        splitLayout.setSplitterPosition(60);
         if (exitCode == 0) {
-//            outputArea.getStyle().remove("color");
             outputArea.setValue(output);
-            new CustomNotification("Program has been executed successfully", NotificationVariant.LUMO_SUCCESS).open();
+            new CustomNotification(
+                    "Program has been executed successfully",
+                    NotificationVariant.LUMO_SUCCESS).open();
         } else if (exitCode >= 0) {
             outputArea.setValue(output);
-//            outputArea.getStyle().setColor("red");
-            new CustomNotification("Program has produced an error", NotificationVariant.LUMO_ERROR).open();
+            new CustomNotification("Program has produced an error",
+                    NotificationVariant.LUMO_ERROR).open();
         } else if (exitCode == HttpStatusCode.EXPECTATION_FAILED.getCode()) {
             outputArea.setValue(output);
-//            outputArea.getStyle().setColor("yellow");
-            new CustomNotification("Program took too long to execute", NotificationVariant.LUMO_WARNING).open();
+            new CustomNotification("Program took too long to execute",
+                    NotificationVariant.LUMO_WARNING).open();
         }
     }
 
@@ -659,7 +673,11 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                     currentFilePath = stringBuilder.toString();
                     currentFileName.setText(stringBuilder.substring(stringBuilder.lastIndexOf("\\")+1));
                     setAceModeByFileExtension(stringBuilder.substring(stringBuilder.indexOf(".")),aceModeSelector);
-
+                    buttonDownloadWrapper.setResource(
+                            new StreamResource(
+                                    currentFileName.getText(),
+                                    () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())
+                            ));
                     dialog.close();
                 }catch (Exception e){
                     logger.error(e.getMessage());

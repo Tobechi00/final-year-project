@@ -57,13 +57,15 @@ public class ServerRequestMethods {
             ResponseEntity<UserPayloadDAO> payloadResponse = restTemplate.postForEntity(url,requestEntity, UserPayloadDAO.class);
             UserPayloadDAO userPayloadDao = payloadResponse.getBody();
 
-            //binding to session
+            //binding userdata to session
         if (userPayloadDao != null) {
-            VaadinSession.getCurrent().setAttribute("USER_TOKEN", userPayloadDao.getToken());
-            VaadinSession.getCurrent().setAttribute("USERNAME", userPayloadDao.getUsername());
-            VaadinSession.getCurrent().setAttribute("FIRSTNAME", userPayloadDao.getFirstName());
-            VaadinSession.getCurrent().setAttribute("LASTNAME", userPayloadDao.getLastName());
-            VaadinSession.getCurrent().setAttribute("ID", userPayloadDao.getId());
+            VaadinSession session = VaadinSession.getCurrent();
+
+            session.setAttribute("USER_TOKEN", userPayloadDao.getToken());
+            session.setAttribute("USERNAME", userPayloadDao.getUsername());
+            session.setAttribute("FIRSTNAME", userPayloadDao.getFirstName());
+            session.setAttribute("LASTNAME", userPayloadDao.getLastName());
+            session.setAttribute("ID", userPayloadDao.getId());
         }
     }
 
