@@ -28,7 +28,6 @@ public class ExtensionMapper {
         extensionToAceMap.put(".c",AceMode.c_cpp);
 
         //Mapping Ace modes to default text
-
         aceToDefaultTextMap.put(
                 AceMode.java,
                 """

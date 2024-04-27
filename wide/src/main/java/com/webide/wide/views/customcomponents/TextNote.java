@@ -51,17 +51,14 @@ public class TextNote extends Dialog {
                 }
             });
 
-        closeButton.setText("close");
-        saveButton.setText("save");
-
-        closeButton.getStyle().setColor("red");
+        closeButton.setText("hide");
 
         //close note on click
         closeButton.addClickListener(event -> {
            this.close();
         });
 
-        getFooter().add(saveButton,closeButton);
+        getFooter().add(closeButton);
         add(textArea);
     }
 
