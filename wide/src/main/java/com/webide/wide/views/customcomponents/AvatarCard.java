@@ -68,6 +68,7 @@ public class AvatarCard extends Dialog{
         logoutDialog.setHeader("Confirm Logout");
 
         cancelButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+        logoutButton.addThemeVariants();
         cancelButton.addClickListener(clickEvent -> logoutDialog.close());
         confirmButton.addClickListener(clickEvent -> logout());
 

@@ -2,7 +2,6 @@ package com.webide.wide.views.views.main;
 
 
 import com.vaadin.flow.component.Key;
-import com.vaadin.flow.component.KeyModifier;
 import com.vaadin.flow.component.Unit;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
@@ -75,6 +74,8 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
     H4 currentFileName;
     TextNote textNote;
     String currentFilePath,firstName,lastName;
+    boolean isUploading;
+    boolean isOpeningRecent;
     SplitLayout splitLayout;
     ServerRequestMethods serverRequestMethods;
     Logger logger = LoggerFactory.getLogger(EditorView.class);
@@ -90,11 +91,14 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         aceEditor.setLiveAutocompletion(true);
         aceEditor.setMode(AceMode.text);
         aceEditor.setDisplayIndentGuides(true);
-        aceEditor.setTheme(AceTheme.nord_dark);
-        aceEditor.setShowInvisibles(true);
+        aceEditor.setTheme(AceTheme.one_dark);
+//        aceEditor.setShowInvisibles(true);
         aceEditor.setValue(ExtensionMapper.getDefaultTextByAceMode(
                 aceEditor.getMode())
         );
+
+        isUploading = false;
+        isOpeningRecent = false;
 
         //layouts
         bottomGutter = new VerticalLayout();
@@ -174,21 +178,30 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         fontSizeSelector = SelectorLists.getSizeSelector();
 
         aceModeSelector.addValueChangeListener(event ->{
-            try {
-                //todo: reconfigure, causing problems for the user remove and decouple
-                launchAceModeChangeDialog(event.getValue(),aceEditor);
-
-                //button needs to be removed before being added again
-
+            //todo add dialogue for upload
+            if(isUploading || isOpeningRecent){
+                aceEditor.setMode(event.getValue());
+                isUploading = false;
+                isOpeningRecent = false;
                 buttonDownloadWrapper.setResource(
                         new StreamResource(
-                        currentFileName.getText()+ExtensionMapper.getExtensionByAceMode(
-                                aceModeSelector.getValue()),
-                        () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())
-                ));
+                                currentFileName.getText()+ExtensionMapper.getExtensionByAceMode(
+                                        aceModeSelector.getValue()),
+                                () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())
+                        ));
+            }else{
+                try {
+                    launchAceModeChangeDialog(event.getValue(),aceEditor);
+                    buttonDownloadWrapper.setResource(
+                            new StreamResource(
+                                    currentFileName.getText()+ExtensionMapper.getExtensionByAceMode(
+                                            aceModeSelector.getValue()),
+                                    () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())
+                            ));
 
-            }catch (Exception e){
-                logger.warn(e.getMessage());
+                }catch (Exception e){
+                    logger.warn(e.getMessage());
+                }
             }
 
         });
@@ -281,7 +294,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         splitLayout = new SplitLayout(aceEditor, utilityScroller);
         splitLayout.setOrientation(SplitLayout.Orientation.VERTICAL);
         splitLayout.setSizeFull();
-        //sets position 70:30
+        //sets position 60:20
         splitLayout.setSplitterPosition(60);
 
         //temp fix for splitter not closing
@@ -549,7 +562,6 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
 
     //save content to existing file
     private void save(String currentFileName,String currentFilePath){
-        System.out.println(currentFilePath);
         if ( !currentFileName.isEmpty() && !currentFileName.equals("Untitled Document") && !currentFilePath.isEmpty()){
             try {
                 serverRequestMethods.saveFile(currentFilePath,aceEditor.getValue());
@@ -617,6 +629,12 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             currentFileName.setText(fileNameField.getValue()+
                     ExtensionMapper.getExtensionByAceMode(aceEditor.getMode()));
 
+            buttonDownloadWrapper.setResource(
+                    new StreamResource(
+                            currentFileName.getText(),
+                            () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())
+                    ));
+
             launchSaveSuccessMessage();
         }catch (Exception e){
             launchSaveErrorNotification();
@@ -654,6 +672,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         StringBuilder stringBuilder = new StringBuilder();
 
 
+        //files stored in key value pairs where key is the file name and value is the file path
         ListBox<String> listBox = new ListBox<>();
         listBox.addValueChangeListener(value->{
             stringBuilder.setLength(0);
@@ -665,6 +684,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
         Button openFileButton = new Button("open");
 
         openFileButton.addClickListener(buttonClickEvent -> {
+            isOpeningRecent = true;
             if (!stringBuilder.isEmpty()) {
                 try {
                     aceEditor.setValue(serverRequestMethods.getFileContent(stringBuilder.toString()));
@@ -680,6 +700,10 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                             ));
                     dialog.close();
                 }catch (Exception e){
+                    new CustomNotification(
+                            "An Error Occurred While Trying to Open This File",
+                            NotificationVariant.LUMO_ERROR
+                    );
                     logger.error(e.getMessage());
                 }
             }
@@ -737,6 +761,11 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 );
 
                 aceEditor.setValue(fileContent.toString());
+                buttonDownloadWrapper.setResource(
+                        new StreamResource(
+                                currentFileName.getText(),
+                                () -> new ByteArrayInputStream(aceEditor.getValue().getBytes())
+                        ));
                 dialog.close();
                 new CustomNotification("file uploaded successfully",NotificationVariant.LUMO_SUCCESS).open();
             }catch (IOException e){
@@ -745,6 +774,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
             }
         });
         currentFilePath = "";
+        isUploading = true;
         dialog.add(upload);
         dialog.open();
     }
@@ -758,6 +788,7 @@ public class EditorView extends VerticalLayout implements BeforeEnterObserver {
                 aceEditor.setValue(
                         ExtensionMapper.getDefaultTextByAceMode(aceMode)
                 );
+                currentFileName.setText("Untitled Document");
             }catch (Exception e){
                 //log err
             }finally {

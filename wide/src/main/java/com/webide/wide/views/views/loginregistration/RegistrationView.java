@@ -124,9 +124,8 @@ public class RegistrationView extends VerticalLayout {
                         );
                 HttpStatusCode statusCode = serverRequestMethods.sendRegistrationRequest(registrationDTO);
 
-                if (statusCode == HttpStatusCode.valueOf(200)){
-                    UI.getCurrent().navigate(RegistrationSuccessView.class);
-                }
+                //create full check
+                UI.getCurrent().navigate(RegistrationSuccessView.class);
 
             }catch (Exception e){
                 new CustomNotification(
